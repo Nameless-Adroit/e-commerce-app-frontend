@@ -1,56 +1,50 @@
-# Welcome to your Expo app 👋
+# Multi-Tier E-Commerce & POS Mobile Application
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A cross-platform React Native & Expo mobile and web application adhering to the Software Requirements Specification (SRS).
 
-## Get started
+## System Personalities & Roles
 
-1. Install dependencies
+1. **Super Admin**: The platform overseer with global permissions across multiple independent shops and system users.
+2. **Shop Admin**: The shop manager assigned to an independent business, responsible for generating unique alphanumeric product IDs, setting prices, restocking inventory, and recording shrinkage.
+3. **POS Seller**: Retail floor operator who scans product IDs (via camera or manual lookup), enters unit quantities, and processes ACID-compliant checkouts with automatic inventory deduction.
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the app
+## 🔑 Quick Demo Login Credentials
 
-   ```bash
-   npx expo start
-   ```
+The login screen features 1-tap quick persona chips for rapid testing:
 
-In the output, you'll find options to open the app in a
+| Persona | Username | Password | Role | Assigned Shop |
+| :--- | :--- | :--- | :--- | :--- |
+| **Super Admin** | `superadmin` | `SuperAdmin123!` | `super_admin` | Global Platform |
+| **Shop 1 Admin** | `admin_tech` | `Admin123!` | `admin` | Downtown Tech & Gadgets (`SHP01`) |
+| **Shop 2 Admin** | `admin_metro` | `Admin123!` | `admin` | Metro Fashion Boutique (`SHP02`) |
+| **Shop 1 Seller** | `seller_alice` | `Seller123!` | `seller` | Downtown Tech & Gadgets (`SHP01`) |
+| **Shop 2 Seller** | `seller_charlie` | `Seller123!` | `seller` | Metro Fashion Boutique (`SHP02`) |
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 🚀 Running the Project
 
-## Get a fresh project
-
-When you're ready, run:
-
+### 1. Start the Backend API Server
+In a terminal, navigate to the `backend/` directory:
 ```bash
-npm run reset-project
+cd backend
+npm run db:init   # If you haven't initialized your MySQL database yet
+npm run dev       # Starts REST API on http://localhost:5000
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Start the React Native Frontend
+In a separate terminal, navigate to `e-commerce-app/`:
+```bash
+cd e-commerce-app
+npm run start     # Launches Expo interactive CLI
+```
+- Press `w` to open in your web browser.
+- Press `a` to open in an Android emulator.
+- Press `i` to open in an iOS simulator.
+- Or scan the QR code with the **Expo Go** mobile app on your physical smartphone.
 
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+> [!TIP]
+> **Testing on a Physical Smartphone:**
+> On the login screen, tap the server URL at the bottom and enter your computer's local Wi-Fi IP (e.g. `http://192.168.1.50:5000/api`) so your phone can communicate with your computer's backend.
