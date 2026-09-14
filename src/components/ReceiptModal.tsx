@@ -47,6 +47,24 @@ export function ReceiptModal({ visible, transaction, onClose }: ReceiptModalProp
 
           <View style={styles.divider} />
 
+          {Number(transaction.discount_amount) > 0 && (
+            <>
+              <View style={styles.subtotalRow}>
+                <Text style={styles.subtotalLabel}>Subtotal</Text>
+                <Text style={styles.subtotalValue}>
+                  ${Number(transaction.subtotal_amount || transaction.total_amount).toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.discountRow}>
+                <Text style={styles.discountLabel}>Discount Applied</Text>
+                <Text style={styles.discountValue}>
+                  -${Number(transaction.discount_amount).toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.divider} />
+            </>
+          )}
+
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total Paid ({transaction.payment_method?.toUpperCase()})</Text>
             <Text style={styles.totalValue}>${Number(transaction.total_amount).toFixed(2)}</Text>
@@ -149,6 +167,40 @@ const styles = StyleSheet.create({
     color: theme.text,
     fontSize: 14,
     fontWeight: '600'
+  },
+  subtotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 4
+  },
+  subtotalLabel: {
+    color: theme.textSecondary,
+    fontSize: 14,
+    fontWeight: '500'
+  },
+  subtotalValue: {
+    color: theme.text,
+    fontSize: 15,
+    fontWeight: '600'
+  },
+  discountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 6
+  },
+  discountLabel: {
+    color: theme.accent,
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  discountValue: {
+    color: theme.accent,
+    fontSize: 15,
+    fontWeight: '700'
   },
   totalRow: {
     flexDirection: 'row',

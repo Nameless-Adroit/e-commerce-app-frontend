@@ -104,7 +104,12 @@ export default function SuperAdminDashboard() {
               <Text style={styles.statValue}>
                 ${Number(globalSummary?.total_revenue || 0).toFixed(2)}
               </Text>
-              <Text style={styles.statSub}>Profit: ${Number(globalSummary?.total_net_profit || 0).toFixed(2)}</Text>
+              <Text style={[
+                styles.statSub,
+                Number(globalSummary?.total_net_profit || 0) < 0 && { color: theme.danger }
+              ]}>
+                {Number(globalSummary?.total_net_profit || 0) < 0 ? 'Net Loss' : 'Profit'}: {Number(globalSummary?.total_net_profit || 0) < 0 ? '-' : ''}${Math.abs(Number(globalSummary?.total_net_profit || 0)).toFixed(2)}
+              </Text>
             </View>
 
             <View style={styles.statCard}>

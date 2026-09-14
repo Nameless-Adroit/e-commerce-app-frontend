@@ -208,13 +208,19 @@ export const posApi = {
     return request<ApiResponse<Product & { is_in_stock: boolean; low_stock_warning: boolean }>>(`/pos/scan/${encodeURIComponent(id)}`);
   },
 
-  async checkout(items: { productId: string; quantity: number }[], paymentMethod: Transaction['payment_method'] = 'cash', notes?: string): Promise<ApiResponse<CheckoutTransaction>> {
+  async checkout(
+    items: { productId: string; quantity: number }[],
+    paymentMethod: Transaction['payment_method'] = 'cash',
+    notes?: string,
+    discount = 0
+  ): Promise<ApiResponse<CheckoutTransaction>> {
     return request<ApiResponse<CheckoutTransaction>>('/pos/checkout', {
       method: 'POST',
       body: JSON.stringify({
         items,
         payment_method: paymentMethod,
-        notes
+        notes,
+        discount
       })
     });
   },

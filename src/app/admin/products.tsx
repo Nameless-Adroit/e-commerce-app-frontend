@@ -82,7 +82,6 @@ export default function AdminProducts() {
       <Header 
         title="Store Inventory" 
         subtitle="Pricing, Stock & Shrinkage" 
-        showBack 
         rightAction={
           <TouchableOpacity onPress={() => router.push('/admin/add-product' as any)} style={styles.addHeaderBtn}>
             <Ionicons name="add" size={20} color="#fff" />

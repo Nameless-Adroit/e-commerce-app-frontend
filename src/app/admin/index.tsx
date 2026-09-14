@@ -113,9 +113,12 @@ export default function AdminDashboard() {
               </View>
 
               <View style={styles.metricItem}>
-                <Text style={styles.metricLabel}>Net Profit</Text>
-                <Text style={[styles.metricValue, { color: theme.secondary }]}>
-                  ${Number(dailyReport?.net_profit || 0).toFixed(2)}
+                <Text style={styles.metricLabel}>{Number(dailyReport?.net_profit || 0) < 0 ? 'Net Loss' : 'Net Profit'}</Text>
+                <Text style={[
+                  styles.metricValue,
+                  { color: Number(dailyReport?.net_profit || 0) < 0 ? theme.danger : theme.secondary }
+                ]}>
+                  {Number(dailyReport?.net_profit || 0) < 0 ? '-' : ''}${Math.abs(Number(dailyReport?.net_profit || 0)).toFixed(2)}
                 </Text>
               </View>
             </View>

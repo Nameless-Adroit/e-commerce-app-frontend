@@ -78,7 +78,6 @@ export default function SuperAdminShops() {
       <Header 
         title="Manage Businesses" 
         subtitle="Multi-Tenant Independent Stores" 
-        showBack 
         rightAction={
           <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addBtn}>
             <Ionicons name="add" size={20} color="#fff" />

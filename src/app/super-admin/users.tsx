@@ -83,7 +83,7 @@ export default function SuperAdminUsers() {
 
   return (
     <View style={styles.container}>
-      <Header title="User Provisioning" subtitle="Create System Staff Accounts" showBack />
+      <Header title="User Provisioning" subtitle="Create System Staff Accounts" />
 
       {loading ? (
         <View style={styles.center}>

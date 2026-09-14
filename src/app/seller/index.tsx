@@ -1,76 +1,67 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  TextInput, 
-  ActivityIndicator, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
   Alert,
-  Platform 
+  RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Header } from '../../components/Header';
 import { ScannerModal } from '../../components/ScannerModal';
-import { ReceiptModal } from '../../components/ReceiptModal';
-import { ReturnRestockModal } from '../../components/ReturnRestockModal';
+import { ProductDetailModal } from '../../components/ProductDetailModal';
 import { useCart } from '../../context/CartContext';
 import { posApi, productApi, analyticsApi } from '../../services/api';
 import { theme } from '../../theme/colors';
-import { Product, Transaction, CheckoutTransaction, TopProduct } from '../../types';
+import { Product, TopProduct } from '../../types';
 
-export default function SellerPOS() {
+export default function SellerCounterScreen() {
   const router = useRouter();
-  const { items, addItem, updateQuantity, removeItem, clearCart, totalAmount, totalUnits } = useCart();
+  const { addItem, items, totalUnits, totalAmount } = useCart();
 
   const [scannerVisible, setScannerVisible] = useState(false);
-  const [receiptVisible, setReceiptVisible] = useState(false);
-  const [returnModalVisible, setReturnModalVisible] = useState(false);
-  const [productToReturn, setProductToReturn] = useState<Product | null>(null);
-
-  const [completedTxn, setCompletedTxn] = useState<Transaction | null>(null);
-
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'mobile_money'>('cash');
-  const [checkingOut, setCheckingOut] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [directSearchId, setDirectSearchId] = useState('');
-  const [loadingCatalog, setLoadingCatalog] = useState(false);
-  const [loadingTopProducts, setLoadingTopProducts] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [selectedDetailProduct, setSelectedDetailProduct] = useState<Product | null>(null);
 
   useEffect(() => {
-    loadQuickProducts();
-    loadTopProducts();
+    loadData();
   }, []);
 
-  const loadQuickProducts = async () => {
-    setLoadingCatalog(true);
+  const loadData = async () => {
+    setLoading(true);
     try {
-      const res = await productApi.listProducts({ limit: 12 });
-      if (res.data?.products) {
-        setCatalogProducts(res.data.products);
+      const [productsRes, topRes] = await Promise.all([
+        productApi.listProducts({ limit: 40 }),
+        analyticsApi.getTopProducts(5)
+      ]);
+
+      if (productsRes.data?.products) {
+        setCatalogProducts(productsRes.data.products);
+      }
+      if (topRes.data?.top_products) {
+        setTopProducts(topRes.data.top_products);
       }
     } catch (err) {
-      console.error('Failed to load products:', err);
+      console.error('Failed to load store counter data:', err);
     } finally {
-      setLoadingCatalog(false);
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const loadTopProducts = async () => {
-    setLoadingTopProducts(true);
-    try {
-      const res = await analyticsApi.getTopProducts(5);
-      if (res.data?.top_products) {
-        setTopProducts(res.data.top_products);
-      }
-    } catch (err) {
-      console.error('Failed to load top products:', err);
-    } finally {
-      setLoadingTopProducts(false);
-    }
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
   };
 
   const handleProductScanned = async (productId: string) => {
@@ -89,86 +80,69 @@ export default function SellerPOS() {
     }
   };
 
-  const handleOpenReturnModal = (product?: Product) => {
-    setProductToReturn(product || null);
-    setReturnModalVisible(true);
-  };
+  const categories = ['ALL', ...Array.from(new Set(catalogProducts.map((p) => p.category || 'General')))];
 
-  const handleReturnSuccess = () => {
-    loadQuickProducts();
-    loadTopProducts();
-  };
-
-  const handleCheckout = async () => {
-    if (items.length === 0) {
-      Alert.alert('Empty Cart', 'Please scan or add at least one product to checkout.');
-      return;
+  const filteredProducts = catalogProducts.filter((p) => {
+    if (categoryFilter !== 'ALL' && (p.category || 'General') !== categoryFilter) {
+      return false;
     }
-
-    setCheckingOut(true);
-    try {
-      const checkoutItems = items.map((i) => ({
-        productId: i.product.id,
-        quantity: i.quantity
-      }));
-
-      const res = await posApi.checkout(checkoutItems, paymentMethod);
-      if (res.data) {
-        setCompletedTxn(toReceiptTransaction(res.data));
-        setReceiptVisible(true);
-        clearCart();
-        loadQuickProducts(); // refresh stock numbers
-        loadTopProducts();   // refresh sales rankings
-      }
-    } catch (err: any) {
-      Alert.alert('Checkout Failed', err.message || 'Error processing transaction.');
-    } finally {
-      setCheckingOut(false);
+    if (directSearchId.trim()) {
+      const q = directSearchId.trim().toLowerCase();
+      return p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q);
     }
-  };
+    return true;
+  });
 
   const topProductLeader = topProducts.length > 0 ? topProducts[0] : null;
 
   return (
     <View style={styles.container}>
-      <Header 
-        title="POS Retail Terminal" 
-        subtitle="Camera Barcode, Sales & Returns" 
+      <Header
+        title="POS Counter"
+        subtitle="Barcode scan & quick-add shelf counter"
         rightAction={
-          <TouchableOpacity onPress={() => router.push('/seller/history' as any)} style={styles.historyBtn}>
-            <Ionicons name="time-outline" size={20} color={theme.text} />
+          <TouchableOpacity onPress={() => router.push('/seller/cart' as any)} style={styles.cartIconBtn}>
+            <Ionicons name="cart-outline" size={20} color={theme.text} />
+            {totalUnits > 0 && (
+              <View style={styles.badgeCircle}>
+                <Text style={styles.badgeText}>{totalUnits}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         }
       />
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        {/* Top Dual Action Bar: Camera Scanner & Customer Return Restock */}
-        <View style={styles.actionBarRow}>
-          <TouchableOpacity 
-            style={styles.scanActionBtn}
-            onPress={() => setScannerVisible(true)}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="scan-circle" size={22} color="#fff" />
-            <Text style={styles.scanActionText}>Scan Barcode</Text>
-          </TouchableOpacity>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+        }
+      >
+        {/* Large Barcode Scanner Action */}
+        <TouchableOpacity
+          style={styles.scanHeroBtn}
+          onPress={() => setScannerVisible(true)}
+          activeOpacity={0.85}
+        >
+          <View style={styles.scanHeroInner}>
+            <View style={styles.scanHeroIconCircle}>
+              <Ionicons name="scan" size={26} color="#ffffff" />
+            </View>
+            <View style={styles.scanHeroTextCol}>
+              <Text style={styles.scanHeroTitle}>Launch Barcode Scanner</Text>
+              <Text style={styles.scanHeroSubtitle}>Auto-detects camera barcodes & instant cart add</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+        </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.returnActionBtn}
-            onPress={() => handleOpenReturnModal()}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="arrow-undo-circle" size={22} color="#fff" />
-            <Text style={styles.returnActionText}>Return Restock</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Direct Alphanumeric ID Lookup */}
-        <View style={styles.directInputBox}>
+        {/* Manual Product ID Lookup / Filter Input */}
+        <View style={styles.searchBox}>
           <Ionicons name="barcode-outline" size={20} color={theme.textMuted} />
           <TextInput
-            style={styles.directInput}
-            placeholder="Type Product ID (e.g. PRD-SHP01-3BSR-CHG4)"
+            style={styles.searchInput}
+            placeholder="Type Product ID or Name (e.g. PRD-SHP01-...)"
             placeholderTextColor={theme.textMuted}
             value={directSearchId}
             onChangeText={setDirectSearchId}
@@ -176,37 +150,39 @@ export default function SellerPOS() {
             onSubmitEditing={() => {
               if (directSearchId.trim()) {
                 handleProductScanned(directSearchId.trim().toUpperCase());
-                setDirectSearchId('');
               }
             }}
           />
-          <TouchableOpacity 
-            style={styles.addDirectBtn}
-            onPress={() => {
-              if (directSearchId.trim()) {
+          {directSearchId.trim().length > 0 && (
+            <TouchableOpacity
+              style={styles.addDirectBtn}
+              onPress={() => {
                 handleProductScanned(directSearchId.trim().toUpperCase());
-                setDirectSearchId('');
-              }
-            }}
-          >
-            <Text style={styles.addDirectText}>Add</Text>
-          </TouchableOpacity>
+              }}
+            >
+              <Text style={styles.addDirectBtnText}>Add</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* 🔥 Most Sold Product Spotlight Banner */}
+        {/* Top Product Leader Spotlight */}
         {topProductLeader && (
           <View style={styles.topSellerCard}>
             <View style={styles.topSellerHeader}>
               <View style={styles.flameBadge}>
                 <Ionicons name="flame" size={15} color="#D97706" />
-                <Text style={styles.flameBadgeText}>#1 MOST SOLD PRODUCT</Text>
+                <Text style={styles.flameBadgeText}>#1 TOP SELLING PRODUCT</Text>
               </View>
               <Text style={styles.unitsSoldBadge}>
-                {topProductLeader.total_units_sold} units sold
+                {topProductLeader.total_units_sold} sold
               </Text>
             </View>
 
-            <View style={styles.topSellerBody}>
+            <TouchableOpacity
+              style={styles.topSellerBody}
+              onPress={() => setSelectedDetailProduct(topProductLeader as any)}
+              activeOpacity={0.8}
+            >
               <View style={styles.topSellerInfo}>
                 <Text style={styles.topSellerName} numberOfLines={1}>
                   {topProductLeader.name}
@@ -218,11 +194,13 @@ export default function SellerPOS() {
                   <Text style={styles.topSellerPrice}>
                     ${Number(topProductLeader.price).toFixed(2)}
                   </Text>
-                  <Text style={[
-                    styles.topSellerStock,
-                    topProductLeader.stock_quantity <= 5 && { color: theme.danger }
-                  ]}>
-                    Shelf Stock: {topProductLeader.stock_quantity}
+                  <Text
+                    style={[
+                      styles.topSellerStock,
+                      topProductLeader.stock_quantity <= 5 && { color: theme.danger }
+                    ]}
+                  >
+                    Stock: {topProductLeader.stock_quantity}
                   </Text>
                 </View>
               </View>
@@ -232,188 +210,144 @@ export default function SellerPOS() {
                   styles.quickAddBtn,
                   topProductLeader.stock_quantity <= 0 && { opacity: 0.5 }
                 ]}
-                onPress={() => handleProductScanned(topProductLeader.product_id)}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  handleProductScanned(topProductLeader.product_id);
+                }}
                 disabled={topProductLeader.stock_quantity <= 0}
+                activeOpacity={0.8}
               >
-                <Ionicons name="cart-outline" size={16} color="#ffffff" />
+                <Ionicons name="add" size={18} color="#ffffff" />
                 <Text style={styles.quickAddBtnText}>Add</Text>
               </TouchableOpacity>
-            </View>
-
-            {/* Runners-up ranks #2 and #3 if available */}
-            {topProducts.length > 1 && (
-              <View style={styles.runnersUpRow}>
-                <Text style={styles.runnersUpLabel}>Top Sellers:</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.runnersUpList}>
-                  {topProducts.slice(1, 4).map((tp, idx) => (
-                    <TouchableOpacity
-                      key={tp.product_id}
-                      style={styles.runnerUpChip}
-                      onPress={() => handleProductScanned(tp.product_id)}
-                    >
-                      <Text style={styles.runnerUpRank}>#{idx + 2}</Text>
-                      <Text style={styles.runnerUpName} numberOfLines={1}>{tp.name}</Text>
-                      <Text style={styles.runnerUpSales}>({tp.total_units_sold})</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
+            </TouchableOpacity>
           </View>
         )}
 
-        {/* Quick Shelf Select / Demo Products */}
-        <View style={styles.shelfHeader}>
-          <View style={styles.shelfTitleRow}>
-            <Text style={styles.shelfTitle}>Store Shelf Counter</Text>
-            <Text style={styles.shelfSubtitle}>Tap card to add, or ↩ to return</Text>
-          </View>
-          <TouchableOpacity onPress={() => { loadQuickProducts(); loadTopProducts(); }}>
+        {/* Category Filter Chips */}
+        {categories.length > 1 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryScroll}
+          >
+            {categories.map((cat) => {
+              const isSelected = categoryFilter === cat;
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.categoryChip, isSelected && styles.categoryChipActive]}
+                  onPress={() => setCategoryFilter(cat)}
+                >
+                  <Text style={[styles.categoryChipText, isSelected && styles.categoryChipTextActive]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {/* Store Shelf Counter Grid */}
+        <View style={styles.shelfHeaderRow}>
+          <Text style={styles.shelfTitle}>Store Shelf Catalog ({filteredProducts.length})</Text>
+          <TouchableOpacity onPress={onRefresh}>
             <Ionicons name="refresh" size={16} color={theme.textMuted} />
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.shelfScroll}>
-          {catalogProducts.map((p) => (
-            <View 
-              key={p.id} 
-              style={[styles.shelfCard, p.stock_quantity <= 0 && { opacity: 0.6 }]}
-            >
-              <TouchableOpacity 
-                style={styles.shelfCardMain}
-                onPress={() => handleProductScanned(p.id)}
-              >
-                <Text style={styles.shelfCardTitle} numberOfLines={1}>{p.name}</Text>
-                <Text style={styles.shelfCardId}>{p.id}</Text>
-                <View style={styles.shelfPriceRow}>
-                  <Text style={styles.shelfCardPrice}>${Number(p.price).toFixed(2)}</Text>
-                  <Text style={[styles.shelfCardStock, p.stock_quantity <= p.reorder_level ? { color: theme.danger } : { color: theme.secondary }]}>
-                    {p.stock_quantity} left
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Quick Return Shortcut Icon */}
-              <TouchableOpacity
-                style={styles.shelfCardReturnBtn}
-                onPress={() => handleOpenReturnModal(p)}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <Ionicons name="arrow-undo-outline" size={13} color={theme.secondary} />
-                <Text style={styles.shelfCardReturnText}>Return</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
-
-        {/* Active Cart & Quantity Picker */}
-        <View style={styles.cartSection}>
-          <View style={styles.cartHeaderRow}>
-            <View style={styles.cartHeaderTitleRow}>
-              <Ionicons name="cart" size={20} color={theme.primary} />
-              <Text style={styles.cartHeaderTitle}>Transaction Cart ({totalUnits} items)</Text>
-            </View>
-            {items.length > 0 && (
-              <TouchableOpacity onPress={clearCart}>
-                <Text style={styles.clearText}>Clear</Text>
-              </TouchableOpacity>
-            )}
+        {loading ? (
+          <ActivityIndicator size="large" color={theme.primary} style={{ marginVertical: 30 }} />
+        ) : filteredProducts.length === 0 ? (
+          <View style={styles.emptyShelfBox}>
+            <Text style={styles.emptyShelfText}>No products matching your search.</Text>
           </View>
+        ) : (
+          <View style={styles.productGrid}>
+            {filteredProducts.map((p) => {
+              const inCartCount = items.find((i) => i.product.id === p.id)?.quantity || 0;
+              const isOutOfStock = p.stock_quantity <= 0;
 
-          {items.length === 0 ? (
-            <View style={styles.emptyCartBox}>
-              <Ionicons name="basket-outline" size={40} color={theme.textMuted} />
-              <Text style={styles.emptyCartText}>No products scanned yet.</Text>
-              <Text style={styles.emptyCartSub}>Tap "Scan Barcode" or pick an item from the shelf above.</Text>
-            </View>
-          ) : (
-            items.map((item) => (
-              <View key={item.product.id} style={styles.cartItemCard}>
-                <View style={styles.cartItemLeft}>
-                  <Text style={styles.cartItemName}>{item.product.name}</Text>
-                  <Text style={styles.cartItemId}>ID: {item.product.id}</Text>
-                  <Text style={styles.cartItemPrice}>${Number(item.product.price).toFixed(2)} each</Text>
-                </View>
+              return (
+                <TouchableOpacity
+                  key={p.id}
+                  style={[styles.productCard, isOutOfStock && styles.productCardOOS]}
+                  onPress={() => setSelectedDetailProduct(p)}
+                  activeOpacity={0.75}
+                >
+                  {inCartCount > 0 && (
+                    <View style={styles.inCartBadge}>
+                      <Text style={styles.inCartBadgeText}>{inCartCount} in cart</Text>
+                    </View>
+                  )}
 
-                {/* Quantity Adjustment Controls */}
-                <View style={styles.qtyControlCol}>
-                  <View style={styles.qtyStepper}>
-                    <TouchableOpacity 
-                      onPress={() => updateQuantity(item.product.id, item.quantity - 1)}
-                      style={styles.qtyBtn}
+                  <Text style={styles.productName} numberOfLines={2}>
+                    {p.name}
+                  </Text>
+                  <Text style={styles.productId} numberOfLines={1}>
+                    {p.id}
+                  </Text>
+
+                  <View style={styles.productFooter}>
+                    <View>
+                      <Text style={styles.productPrice}>${Number(p.price).toFixed(2)}</Text>
+                      <Text
+                        style={[
+                          styles.productStock,
+                          p.stock_quantity <= p.reorder_level
+                            ? { color: theme.danger }
+                            : { color: theme.secondary }
+                        ]}
+                      >
+                        {isOutOfStock ? '0 units' : `${p.stock_quantity} left`}
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.quickCardAddBtn, isOutOfStock && { opacity: 0.4 }]}
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        handleProductScanned(p.id);
+                      }}
+                      disabled={isOutOfStock}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      activeOpacity={0.8}
                     >
-                      <Ionicons name="remove" size={16} color={theme.text} />
-                    </TouchableOpacity>
-
-                    <Text style={styles.qtyNumber}>{item.quantity}</Text>
-
-                    <TouchableOpacity 
-                      onPress={() => updateQuantity(item.product.id, item.quantity + 1)}
-                      style={[styles.qtyBtn, item.quantity >= item.product.stock_quantity && { opacity: 0.3 }]}
-                      disabled={item.quantity >= item.product.stock_quantity}
-                    >
-                      <Ionicons name="add" size={16} color={theme.text} />
+                      <Ionicons name="add" size={16} color="#ffffff" />
                     </TouchableOpacity>
                   </View>
-
-                  <Text style={styles.itemSubtotal}>
-                    ${(item.quantity * item.product.price).toFixed(2)}
-                  </Text>
-                </View>
-
-                <TouchableOpacity 
-                  onPress={() => removeItem(item.product.id)}
-                  style={styles.removeBtn}
-                >
-                  <Ionicons name="trash-outline" size={18} color={theme.danger} />
                 </TouchableOpacity>
-              </View>
-            ))
-          )}
-        </View>
-
-        {/* Payment & Checkout Footer */}
-        {items.length > 0 && (
-          <View style={styles.checkoutFooter}>
-            <Text style={styles.payLabel}>Select Payment Method:</Text>
-            <View style={styles.payPicker}>
-              {(['cash', 'card', 'mobile_money'] as const).map((m) => (
-                <TouchableOpacity 
-                  key={m}
-                  style={[styles.payOption, paymentMethod === m && styles.payOptionActive]}
-                  onPress={() => setPaymentMethod(m)}
-                >
-                  <Text style={[styles.payText, paymentMethod === m && styles.payTextActive]}>
-                    {m === 'cash' ? '💵 Cash' : m === 'card' ? '💳 Card' : '📱 Mobile'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Grand Total</Text>
-              <Text style={styles.totalAmount}>${totalAmount.toFixed(2)}</Text>
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.checkoutBtn, checkingOut && { opacity: 0.7 }]}
-              onPress={handleCheckout}
-              disabled={checkingOut}
-            >
-              {checkingOut ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <View style={styles.checkoutBtnInner}>
-                  <Ionicons name="shield-checkmark" size={20} color="#fff" />
-                  <Text style={styles.checkoutBtnText}>Confirm Checkout & Deduct Units</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+              );
+            })}
           </View>
         )}
       </ScrollView>
 
-      {/* Camera & Barcode Scanner Modal */}
+      {/* Floating Bottom Cart Quick Peek */}
+      {totalUnits > 0 && (
+        <View style={styles.floatingCartContainer}>
+          <TouchableOpacity
+            style={styles.floatingCartBar}
+            onPress={() => router.push('/seller/cart' as any)}
+            activeOpacity={0.9}
+          >
+            <View style={styles.floatingCartLeft}>
+              <View style={styles.floatingCartBadge}>
+                <Ionicons name="cart" size={16} color="#ffffff" />
+                <Text style={styles.floatingCartBadgeText}>{totalUnits}</Text>
+              </View>
+              <Text style={styles.floatingCartTotal}>${totalAmount.toFixed(2)}</Text>
+            </View>
+
+            <View style={styles.floatingCartRight}>
+              <Text style={styles.floatingCartActionText}>Proceed to Checkout</Text>
+              <Ionicons name="arrow-forward" size={16} color="#ffffff" />
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Barcode Scanner Modal */}
       <ScannerModal
         visible={scannerVisible}
         onClose={() => setScannerVisible(false)}
@@ -421,32 +355,16 @@ export default function SellerPOS() {
         sampleIds={catalogProducts.map((p) => p.id)}
       />
 
-      {/* Customer Return & Restock Modal */}
-      <ReturnRestockModal
-        visible={returnModalVisible}
-        onClose={() => setReturnModalVisible(false)}
-        onSuccess={handleReturnSuccess}
-        initialProduct={productToReturn}
-        products={catalogProducts}
-      />
-
-      {/* POS Receipt Modal */}
-      <ReceiptModal
-        visible={receiptVisible}
-        transaction={completedTxn}
-        onClose={() => setReceiptVisible(false)}
+      {/* Product Detail Lightbox Modal */}
+      <ProductDetailModal
+        visible={!!selectedDetailProduct}
+        product={selectedDetailProduct}
+        onClose={() => setSelectedDetailProduct(null)}
+        onAddToCart={(product, qty) => addItem(product, qty)}
+        inCartQuantity={items.find((i) => i.product.id === selectedDetailProduct?.id)?.quantity || 0}
       />
     </View>
   );
-}
-
-/** Adapts the compact checkout response to the receipt component's full model. */
-function toReceiptTransaction(transaction: CheckoutTransaction): Transaction {
-  return {
-    ...transaction,
-    id: transaction.transaction_id,
-    transaction_date: new Date().toISOString()
-  };
 }
 
 const styles = StyleSheet.create({
@@ -458,491 +376,334 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    paddingHorizontal: 22,
-    paddingTop: 16,
-    paddingBottom: 40
+    padding: 16,
+    paddingBottom: 90
   },
-  historyBtn: {
+  cartIconBtn: {
     padding: 8,
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.surfaceLight
+    position: 'relative'
   },
-  actionBarRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14
-  },
-  scanActionBtn: {
-    flex: 1.2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+  badgeCircle: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
     backgroundColor: theme.primary,
-    paddingVertical: 13,
-    borderRadius: theme.radius.lg,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 3
-  },
-  scanActionText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  returnActionBtn: {
-    flex: 1.1,
-    flexDirection: 'row',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: theme.secondary,
-    paddingVertical: 13,
-    borderRadius: theme.radius.lg,
-    shadowColor: theme.secondary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 3
+    paddingHorizontal: 4
   },
-  returnActionText: {
-    color: '#fff',
-    fontSize: 14,
+  badgeText: {
+    color: '#ffffff',
+    fontSize: 10,
     fontWeight: '700'
   },
-  directInputBox: {
+  scanHeroBtn: {
+    backgroundColor: theme.primary,
+    borderRadius: 16,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    ...theme.shadow
+  },
+  scanHeroInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1
+  },
+  scanHeroIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  scanHeroTextCol: {
+    flex: 1
+  },
+  scanHeroTitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700'
+  },
+  scanHeroSubtitle: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 12,
+    marginTop: 2
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    marginBottom: 16,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 48,
+    marginBottom: 14,
+    gap: 10,
+    ...theme.shadow
   },
-  directInput: {
+  searchInput: {
     flex: 1,
-    color: theme.text,
-    fontSize: 13,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace'
+    fontSize: 14,
+    color: theme.text
   },
   addDirectBtn: {
-    backgroundColor: theme.secondary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: theme.radius.sm
+    backgroundColor: theme.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8
   },
-  addDirectText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 12
+  addDirectBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700'
   },
   topSellerCard: {
-    backgroundColor: theme.surface,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
-    borderRadius: theme.radius.lg,
+    borderColor: '#FDE68A',
     padding: 14,
-    marginBottom: 18,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2
+    marginBottom: 14
   },
   topSellerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10
+    marginBottom: 8
   },
   flameBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6
+    gap: 4
   },
   flameBadgeText: {
-    color: '#B45309',
     fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.4
+    color: '#B45309'
   },
   unitsSoldBadge: {
-    color: theme.secondary,
-    fontSize: 12,
-    fontWeight: '700'
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#92400E'
   },
   topSellerBody: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12
+    alignItems: 'center'
   },
   topSellerInfo: {
-    flex: 1
+    flex: 1,
+    marginRight: 10
   },
   topSellerName: {
-    color: theme.text,
-    fontSize: 15,
-    fontWeight: '700'
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#78350F'
   },
   topSellerId: {
-    color: theme.textMuted,
     fontSize: 11,
+    color: '#92400E',
     marginTop: 2
   },
   topSellerMetrics: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
-    marginTop: 6
+    marginTop: 4
   },
   topSellerPrice: {
-    color: theme.accent,
-    fontSize: 15,
-    fontWeight: '800'
+    fontSize: 14,
+    fontWeight: '700',
+    color: theme.accent
   },
   topSellerStock: {
-    color: theme.textSecondary,
     fontSize: 12,
+    color: theme.secondary,
     fontWeight: '600'
   },
   quickAddBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     backgroundColor: theme.primary,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: theme.radius.md
+    borderRadius: 8
   },
   quickAddBtnText: {
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '700'
   },
-  runnersUpRow: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: theme.surfaceBorder,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  runnersUpLabel: {
-    color: theme.textMuted,
-    fontSize: 11,
-    fontWeight: '600'
-  },
-  runnersUpList: {
-    flexDirection: 'row',
-    gap: 6
-  },
-  runnerUpChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: theme.surfaceLight,
-    borderWidth: 1,
-    borderColor: theme.surfaceBorder,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: theme.radius.sm
-  },
-  runnerUpRank: {
-    color: '#D97706',
-    fontSize: 10,
-    fontWeight: '800'
-  },
-  runnerUpName: {
-    color: theme.text,
-    fontSize: 11,
-    fontWeight: '600',
-    maxWidth: 80
-  },
-  runnerUpSales: {
-    color: theme.textMuted,
-    fontSize: 10
-  },
-  shelfHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10
-  },
-  shelfTitleRow: {
-    flex: 1
-  },
-  shelfTitle: {
-    color: theme.text,
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  shelfSubtitle: {
-    color: theme.textMuted,
-    fontSize: 11,
-    marginTop: 1
-  },
-  shelfScroll: {
-    marginBottom: 18
-  },
-  shelfCard: {
-    width: 145,
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.surfaceBorder,
-    borderRadius: theme.radius.md,
-    padding: 10,
-    marginRight: 10,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-    justifyContent: 'space-between'
-  },
-  shelfCardMain: {
-    flex: 1
-  },
-  shelfCardTitle: {
-    color: theme.text,
-    fontSize: 12,
-    fontWeight: '700'
-  },
-  shelfCardId: {
-    color: theme.primary,
-    fontSize: 10,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    marginTop: 2
-  },
-  shelfPriceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8
-  },
-  shelfCardPrice: {
-    color: theme.accent,
-    fontSize: 13,
-    fontWeight: '700'
-  },
-  shelfCardStock: {
-    fontSize: 10,
-    fontWeight: '600'
-  },
-  shelfCardReturnBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    marginTop: 8,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: theme.surfaceBorder
-  },
-  shelfCardReturnText: {
-    color: theme.secondary,
-    fontSize: 11,
-    fontWeight: '600'
-  },
-  cartSection: {
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.surfaceBorder,
-    borderRadius: theme.radius.lg,
-    padding: 18,
-    marginBottom: 20,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2
-  },
-  cartHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14
-  },
-  cartHeaderTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  cartHeaderTitle: {
-    color: theme.text,
-    fontSize: 16,
-    fontWeight: '700'
-  },
-  clearText: {
-    color: theme.danger,
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  emptyCartBox: {
-    alignItems: 'center',
-    paddingVertical: 36
-  },
-  emptyCartText: {
-    color: theme.text,
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 10
-  },
-  emptyCartSub: {
-    color: theme.textMuted,
-    fontSize: 12,
-    marginTop: 4,
-    textAlign: 'center'
-  },
-  cartItemCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.surfaceLight,
-    borderRadius: theme.radius.md,
-    padding: 12,
-    marginBottom: 10
-  },
-  cartItemLeft: {
-    flex: 1,
-    paddingRight: 8
-  },
-  cartItemName: {
-    color: theme.text,
-    fontSize: 14,
-    fontWeight: '600'
-  },
-  cartItemId: {
-    color: theme.primary,
-    fontSize: 11,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    marginTop: 2
-  },
-  cartItemPrice: {
-    color: theme.textSecondary,
-    fontSize: 12,
-    marginTop: 2
-  },
-  qtyControlCol: {
-    alignItems: 'center',
-    marginRight: 10
-  },
-  qtyStepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.inputBg,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: theme.inputBorder
-  },
-  qtyBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4
-  },
-  qtyNumber: {
-    color: theme.text,
-    fontSize: 13,
-    fontWeight: '700',
-    paddingHorizontal: 6
-  },
-  itemSubtotal: {
-    color: theme.accent,
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 4
-  },
-  removeBtn: {
-    padding: 6
-  },
-  checkoutFooter: {
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.surfaceBorder,
-    borderRadius: theme.radius.lg,
-    padding: 18,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2
-  },
-  payLabel: {
-    color: theme.textSecondary,
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8
-  },
-  payPicker: {
-    flexDirection: 'row',
+  categoryScroll: {
     gap: 8,
-    marginBottom: 16
+    paddingBottom: 14
   },
-  payOption: {
-    flex: 1,
-    backgroundColor: theme.surfaceLight,
+  categoryChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: theme.surfaceBorder,
-    paddingVertical: 10,
-    borderRadius: theme.radius.md,
-    alignItems: 'center'
+    borderColor: theme.surfaceBorder
   },
-  payOptionActive: {
-    backgroundColor: 'rgba(79, 70, 229, 0.08)',
+  categoryChipActive: {
+    backgroundColor: theme.primary,
     borderColor: theme.primary
   },
-  payText: {
-    color: theme.textSecondary,
+  categoryChipText: {
     fontSize: 12,
-    fontWeight: '600'
+    fontWeight: '600',
+    color: theme.textSecondary
   },
-  payTextActive: {
-    color: theme.primary,
-    fontWeight: '700'
+  categoryChipTextActive: {
+    color: '#ffffff'
   },
-  totalRow: {
+  shelfHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14
+    marginBottom: 10
   },
-  totalLabel: {
+  shelfTitle: {
+    fontSize: 14,
+    fontWeight: '700',
     color: theme.textSecondary,
-    fontSize: 16,
-    fontWeight: '600'
+    textTransform: 'uppercase',
+    letterSpacing: 0.5
   },
-  totalAmount: {
-    color: theme.accent,
-    fontSize: 26,
-    fontWeight: '800'
+  productGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
   },
-  checkoutBtn: {
-    backgroundColor: theme.accent,
-    borderRadius: theme.radius.md,
-    paddingVertical: 14,
+  productCard: {
+    width: '48.5%',
+    backgroundColor: theme.surface,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder,
+    position: 'relative',
+    ...theme.shadow
+  },
+  productCardOOS: {
+    opacity: 0.5
+  },
+  inCartBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6
+  },
+  inCartBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: theme.primary
+  },
+  productName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.text,
+    marginBottom: 4,
+    marginTop: 2
+  },
+  productId: {
+    fontSize: 10,
+    color: theme.textMuted,
+    marginBottom: 8
+  },
+  productFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center'
   },
-  checkoutBtnInner: {
+  productPrice: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: theme.accent
+  },
+  productStock: {
+    fontSize: 11,
+    fontWeight: '600'
+  },
+  quickCardAddBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: theme.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadow
+  },
+  emptyShelfBox: {
+    padding: 30,
+    alignItems: 'center'
+  },
+  emptyShelfText: {
+    color: theme.textMuted,
+    fontSize: 13
+  },
+  floatingCartContainer: {
+    position: 'absolute',
+    bottom: 12,
+    left: 16,
+    right: 16,
+    zIndex: 99
+  },
+  floatingCartBar: {
+    backgroundColor: theme.text,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
+    justifyContent: 'space-between',
+    ...theme.shadow
   },
-  checkoutBtnText: {
-    color: '#fff',
+  floatingCartLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  floatingCartBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: theme.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8
+  },
+  floatingCartBadgeText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  floatingCartTotal: {
+    color: '#ffffff',
     fontSize: 15,
     fontWeight: '700'
+  },
+  floatingCartRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  floatingCartActionText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '600'
   }
 });

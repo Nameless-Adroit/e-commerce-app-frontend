@@ -91,7 +91,7 @@ export default function AddProductScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Add New Product" subtitle="Unique ID Generation & Inventory Entry" showBack />
+      <Header title="Add New Product" subtitle="Unique ID Generation & Inventory Entry" />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>

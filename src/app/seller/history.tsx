@@ -56,7 +56,7 @@ export default function SellerHistory() {
 
   return (
     <View style={styles.container}>
-      <Header title="Transaction Journal" subtitle="Completed Counter Sales" showBack />
+      <Header title="Transaction Journal" subtitle="Completed Counter Sales" />
 
       {loading ? (
         <View style={styles.center}>

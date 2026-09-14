@@ -57,7 +57,7 @@ export default function AdminAnalytics() {
 
   return (
     <View style={styles.container}>
-      <Header title="Daily Close & Analytics" subtitle="Revenue, Profit & Shrinkage (SRS 3.4)" showBack />
+      <Header title="Daily Close & Analytics" subtitle="Revenue, Profit & Shrinkage (SRS 3.4)" />
 
       {loading ? (
         <View style={styles.center}>
@@ -106,14 +106,21 @@ export default function AdminAnalytics() {
               <Text style={styles.boxSub}>From customer checkouts</Text>
             </View>
 
-            <View style={[styles.statBox, { borderColor: theme.secondary }]}>
-              <Ionicons name="trending-up" size={24} color={theme.secondary} />
-              <Text style={styles.boxLabel}>Net Profit</Text>
-              <Text style={[styles.boxValue, { color: theme.secondary }]}>
-                ${Number(report?.net_profit || 0).toFixed(2)}
-              </Text>
-              <Text style={styles.boxSub}>Cost: ${Number(report?.total_cost || 0).toFixed(2)}</Text>
-            </View>
+            {(() => {
+              const profit = Number(report?.net_profit || 0);
+              const isNeg = profit < 0;
+              const formattedProfit = `${isNeg ? '-' : ''}$${Math.abs(profit).toFixed(2)}`;
+              return (
+                <View style={[styles.statBox, { borderColor: isNeg ? theme.danger : theme.secondary }]}>
+                  <Ionicons name={isNeg ? 'trending-down' : 'trending-up'} size={24} color={isNeg ? theme.danger : theme.secondary} />
+                  <Text style={styles.boxLabel}>{isNeg ? 'Net Loss' : 'Net Profit'}</Text>
+                  <Text style={[styles.boxValue, { color: isNeg ? theme.danger : theme.secondary }]}>
+                    {formattedProfit}
+                  </Text>
+                  <Text style={styles.boxSub}>Cost: ${Number(report?.total_cost || 0).toFixed(2)}</Text>
+                </View>
+              );
+            })()}
 
             <View style={[styles.statBox, { borderColor: theme.primary }]}>
               <Ionicons name="cart" size={24} color={theme.primary} />
@@ -156,9 +163,15 @@ export default function AdminAnalytics() {
             </View>
             <View style={[styles.detailRow, styles.lastRow]}>
               <Text style={styles.finalLabel}>Net Operational Surplus</Text>
-              <Text style={styles.finalVal}>
-                ${(Number(report?.net_profit || 0) - Number(report?.shrinkage_cost || 0)).toFixed(2)}
-              </Text>
+              {(() => {
+                const surplus = Number(report?.net_profit || 0) - Number(report?.shrinkage_cost || 0);
+                const isNeg = surplus < 0;
+                return (
+                  <Text style={[styles.finalVal, { color: isNeg ? theme.danger : theme.accent }]}>
+                    {isNeg ? '-' : ''}${Math.abs(surplus).toFixed(2)}
+                  </Text>
+                );
+              })()}
             </View>
           </View>
         </ScrollView>

@@ -62,6 +62,8 @@ export interface Transaction {
   shop_code?: string;
   seller_id: number;
   seller_name?: string;
+  subtotal_amount?: number;
+  discount_amount?: number;
   total_amount: number;
   payment_method: 'cash' | 'card' | 'mobile_money';
   status: 'completed' | 'refunded' | 'cancelled';
@@ -76,6 +78,8 @@ export interface CheckoutTransaction {
   transaction_id: string;
   shop_id: number;
   seller_id: number;
+  subtotal_amount?: number;
+  discount_amount?: number;
   total_amount: number;
   payment_method: 'cash' | 'card' | 'mobile_money';
   status: 'completed';
