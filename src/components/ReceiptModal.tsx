@@ -8,9 +8,10 @@ interface ReceiptModalProps {
   visible: boolean;
   transaction: Transaction | null;
   onClose: () => void;
+  title?: string;
 }
 
-export function ReceiptModal({ visible, transaction, onClose }: ReceiptModalProps) {
+export function ReceiptModal({ visible, transaction, onClose, title = 'Official Sales Receipt' }: ReceiptModalProps) {
   if (!transaction) return null;
 
   return (
@@ -21,7 +22,7 @@ export function ReceiptModal({ visible, transaction, onClose }: ReceiptModalProp
             <Ionicons name="checkmark-circle" size={48} color={theme.accent} />
           </View>
 
-          <Text style={styles.title}>Transaction Complete</Text>
+          <Text style={styles.title}>{title}</Text>
           <Text style={styles.txnId}>{transaction.id}</Text>
           <Text style={styles.dateText}>
             {new Date(transaction.transaction_date || Date.now()).toLocaleString()}

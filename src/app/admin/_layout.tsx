@@ -34,6 +34,15 @@ export default function AdminLayout() {
         }}
       />
       <Tabs.Screen
+        name="transactions"
+        options={{
+          title: 'Transactions',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="products"
         options={{
           title: 'Inventory',

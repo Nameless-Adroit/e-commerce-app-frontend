@@ -10,20 +10,49 @@ import {
   RefreshControl 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Header } from '../../components/Header';
 import { analyticsApi } from '../../services/api';
 import { theme } from '../../theme/colors';
 import { DailyReport } from '../../types';
 
+function formatDateToISO(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseISODate(dateStr: string): Date {
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  }
+  return new Date();
+}
+
+function formatDisplayDate(dateStr: string): string {
+  const d = parseISODate(dateStr);
+  return d.toLocaleDateString(undefined, {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
 export default function AdminAnalytics() {
+  const router = useRouter();
+  const todayStr = React.useMemo(() => formatDateToISO(new Date()), []);
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [report, setReport] = useState<DailyReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [compiling, setCompiling] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadReport = async () => {
+  const loadReport = async (dateToLoad: string = selectedDate) => {
     try {
-      const res = await analyticsApi.getDailyReport();
+      const res = await analyticsApi.getDailyReport(dateToLoad);
       if (res.data && !('global_summary' in res.data)) {
         setReport(res.data as DailyReport);
       }
@@ -36,15 +65,27 @@ export default function AdminAnalytics() {
   };
 
   useEffect(() => {
-    loadReport();
-  }, []);
+    loadReport(selectedDate);
+  }, [selectedDate]);
+
+  const handlePrevDay = () => {
+    const current = parseISODate(selectedDate);
+    current.setDate(current.getDate() - 1);
+    setSelectedDate(formatDateToISO(current));
+  };
+
+  const handleNextDay = () => {
+    const current = parseISODate(selectedDate);
+    current.setDate(current.getDate() + 1);
+    setSelectedDate(formatDateToISO(current));
+  };
 
   const handleTriggerDailyClose = async () => {
     setCompiling(true);
     try {
-      await analyticsApi.triggerDailyClose();
-      const reportRes = await analyticsApi.getDailyReport();
-      Alert.alert('Daily Close Compiled', 'End-of-day transaction figures, revenue, profit, and shrinkage audit updated successfully.');
+      await analyticsApi.triggerDailyClose(selectedDate);
+      const reportRes = await analyticsApi.getDailyReport(selectedDate);
+      Alert.alert('Daily Close Compiled', `End-of-day audit figures for ${selectedDate} compiled successfully.`);
       if (reportRes.data && !('global_summary' in reportRes.data)) {
         setReport(reportRes.data as DailyReport);
       }
@@ -58,6 +99,64 @@ export default function AdminAnalytics() {
   return (
     <View style={styles.container}>
       <Header title="Daily Close & Analytics" subtitle="Revenue, Profit & Shrinkage (SRS 3.4)" />
+
+      {/* Date Stepper Bar */}
+      <View style={styles.dateBar}>
+        <View style={styles.dateControlsRow}>
+          <TouchableOpacity 
+            style={styles.navArrowBtn} 
+            onPress={handlePrevDay}
+            accessibilityLabel="Previous Day"
+          >
+            <Ionicons name="chevron-back" size={20} color={theme.text} />
+          </TouchableOpacity>
+
+          <View style={styles.dateDisplayBtn}>
+            <Ionicons name="calendar" size={18} color={theme.primary} />
+            <View style={styles.dateTextGroup}>
+              <Text style={styles.dateDisplayMain}>{formatDisplayDate(selectedDate)}</Text>
+              <Text style={styles.dateDisplaySub}>
+                {selectedDate} {selectedDate === todayStr ? '• (Today)' : ''}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity 
+            style={styles.navArrowBtn} 
+            onPress={handleNextDay}
+            accessibilityLabel="Next Day"
+          >
+            <Ionicons name="chevron-forward" size={20} color={theme.text} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.presetsRow}>
+          <TouchableOpacity 
+            style={[styles.presetChip, selectedDate === todayStr && styles.presetChipActive]}
+            onPress={() => setSelectedDate(todayStr)}
+          >
+            <Text style={[styles.presetChipText, selectedDate === todayStr && styles.presetChipTextActive]}>
+              Today
+            </Text>
+          </TouchableOpacity>
+
+          {(() => {
+            const y = new Date();
+            y.setDate(y.getDate() - 1);
+            const yStr = formatDateToISO(y);
+            return (
+              <TouchableOpacity 
+                style={[styles.presetChip, selectedDate === yStr && styles.presetChipActive]}
+                onPress={() => setSelectedDate(yStr)}
+              >
+                <Text style={[styles.presetChipText, selectedDate === yStr && styles.presetChipTextActive]}>
+                  Yesterday
+                </Text>
+              </TouchableOpacity>
+            );
+          })()}
+        </View>
+      </View>
 
       {loading ? (
         <View style={styles.center}>
@@ -74,7 +173,7 @@ export default function AdminAnalytics() {
             <View style={styles.bannerTextCol}>
               <Text style={styles.bannerTitle}>Close of Business Day</Text>
               <Text style={styles.bannerDesc}>
-                Snapshot sales data, calculate net profit, and record inventory shrinkage for {report?.report_date || 'today'}.
+                Snapshot sales data, calculate net profit, and record inventory shrinkage for {selectedDate}.
               </Text>
             </View>
 
@@ -174,6 +273,25 @@ export default function AdminAnalytics() {
               })()}
             </View>
           </View>
+
+          {/* Inspect Transactions Button */}
+          <TouchableOpacity 
+            style={styles.inspectTxnsBtn}
+            onPress={() => router.push({ pathname: '/admin/transactions', params: { date: selectedDate } } as any)}
+          >
+            <View style={styles.inspectTxnsLeft}>
+              <Ionicons name="receipt" size={20} color="#fff" />
+              <View>
+                <Text style={styles.inspectTxnsTitle}>
+                  Inspect Transactions ({report?.total_transactions || 0} sales)
+                </Text>
+                <Text style={styles.inspectTxnsSub}>
+                  View all itemized receipts for {selectedDate}
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          </TouchableOpacity>
         </ScrollView>
       )}
     </View>
@@ -184,6 +302,80 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background
+  },
+  dateBar: {
+    backgroundColor: theme.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.surfaceBorder
+  },
+  dateControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  navArrowBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  dateDisplayBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginHorizontal: 10,
+    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.25)'
+  },
+  dateTextGroup: {
+    alignItems: 'center',
+    marginHorizontal: 8
+  },
+  dateDisplayMain: {
+    color: theme.text,
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  dateDisplaySub: {
+    color: theme.textMuted,
+    fontSize: 11,
+    marginTop: 2
+  },
+  presetsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8
+  },
+  presetChip: {
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder
+  },
+  presetChipActive: {
+    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    borderColor: theme.primary
+  },
+  presetChipText: {
+    fontSize: 12,
+    color: theme.textMuted,
+    fontWeight: '500'
+  },
+  presetChipTextActive: {
+    color: theme.primary,
+    fontWeight: '700'
   },
   center: {
     flex: 1,
@@ -239,46 +431,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700'
   },
-  sectionTitle: {
-    color: theme.text,
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12
-  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 22
+    marginBottom: 20
   },
   statBox: {
-    flex: 1,
-    minWidth: '45%',
+    width: '48%',
+    flexGrow: 1,
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.lg,
     padding: 16,
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2
+    shadowRadius: 4,
+    elevation: 1
   },
   boxLabel: {
     color: theme.textSecondary,
     fontSize: 12,
+    fontWeight: '500',
     marginTop: 8
   },
   boxValue: {
     color: theme.text,
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     marginVertical: 4
   },
   boxSub: {
     color: theme.textMuted,
     fontSize: 11
+  },
+  sectionTitle: {
+    color: theme.text,
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12
   },
   detailCard: {
     backgroundColor: theme.surface,
@@ -328,5 +521,30 @@ const styles = StyleSheet.create({
     color: theme.accent,
     fontSize: 16,
     fontWeight: '800'
+  },
+  inspectTxnsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.primary,
+    borderRadius: theme.radius.lg,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginTop: 16
+  },
+  inspectTxnsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  inspectTxnsTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  inspectTxnsSub: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 11,
+    marginTop: 2
   }
 });

@@ -72,32 +72,41 @@ export default function AdminDashboard() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         >
           {/* Quick Action Navigation Grid */}
-          <View style={styles.actionRow}>
+          <View style={styles.actionGrid}>
             <TouchableOpacity 
               style={[styles.actionCard, { backgroundColor: 'rgba(99, 102, 241, 0.12)', borderColor: theme.primary }]}
               onPress={() => router.push('/admin/add-product' as any)}
             >
-              <Ionicons name="add-circle" size={28} color={theme.primary} />
-              <Text style={styles.actionTitle}>New Product</Text>
-              <Text style={styles.actionSub}>Generate Unique ID</Text>
+              <Ionicons name="add-circle" size={26} color={theme.primary} />
+              <Text style={styles.actionTitle}>New Item</Text>
+              <Text style={styles.actionSub}>Product ID</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.actionCard, { backgroundColor: 'rgba(234, 88, 12, 0.12)', borderColor: '#f97316' }]}
+              onPress={() => router.push('/admin/transactions' as any)}
+            >
+              <Ionicons name="receipt" size={26} color="#f97316" />
+              <Text style={styles.actionTitle}>Transactions</Text>
+              <Text style={styles.actionSub}>Sales History</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
               style={[styles.actionCard, { backgroundColor: 'rgba(14, 165, 233, 0.12)', borderColor: theme.secondary }]}
               onPress={() => router.push('/admin/products' as any)}
             >
-              <Ionicons name="pricetags" size={28} color={theme.secondary} />
+              <Ionicons name="pricetags" size={26} color={theme.secondary} />
               <Text style={styles.actionTitle}>Inventory</Text>
-              <Text style={styles.actionSub}>Prices & Restock</Text>
+              <Text style={styles.actionSub}>Restock</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
               style={[styles.actionCard, { backgroundColor: 'rgba(16, 185, 129, 0.12)', borderColor: theme.accent }]}
               onPress={() => router.push('/admin/analytics' as any)}
             >
-              <Ionicons name="bar-chart" size={28} color={theme.accent} />
+              <Ionicons name="bar-chart" size={26} color={theme.accent} />
               <Text style={styles.actionTitle}>Daily Close</Text>
-              <Text style={styles.actionSub}>Sales & Shrinkage</Text>
+              <Text style={styles.actionSub}>Audit</Text>
             </TouchableOpacity>
           </View>
 
@@ -138,6 +147,19 @@ export default function AdminDashboard() {
                 </Text>
               </View>
             </View>
+
+            <TouchableOpacity 
+              style={styles.journalLinkBtn}
+              onPress={() => router.push('/admin/transactions' as any)}
+            >
+              <View style={styles.journalLinkLeft}>
+                <Ionicons name="receipt-outline" size={16} color={theme.primary} />
+                <Text style={styles.journalLinkText}>
+                  Audit Today's Sales Journal ({dailyReport?.total_transactions || 0} transactions)
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={theme.primary} />
+            </TouchableOpacity>
           </View>
 
           {/* Low Stock Alerts */}
@@ -199,16 +221,18 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingBottom: 40
   },
-  actionRow: {
+  actionGrid: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 22
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20
   },
   actionCard: {
-    flex: 1,
+    width: '48%',
+    flexGrow: 1,
     borderWidth: 1,
     borderRadius: theme.radius.lg,
-    padding: 14,
+    padding: 12,
     alignItems: 'center',
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 1 },
@@ -269,6 +293,29 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: theme.surfaceBorder,
     marginVertical: 14
+  },
+  journalLinkBtn: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.25)',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 14
+  },
+  journalLinkLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1
+  },
+  journalLinkText: {
+    color: theme.primary,
+    fontSize: 12,
+    fontWeight: '700'
   },
   alertHeader: {
     flexDirection: 'row',

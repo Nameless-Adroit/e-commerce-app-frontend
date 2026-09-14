@@ -5,6 +5,7 @@ import {
   User, 
   Product, 
   Transaction, 
+  TransactionSummary,
   CheckoutTransaction,
   DailyReport, 
   GlobalSummary, 
@@ -228,17 +229,23 @@ export const posApi = {
   async getTransactions(params: {
     limit?: number;
     offset?: number;
+    date?: string;
     start_date?: string;
     end_date?: string;
-  } = {}): Promise<ApiResponse<{ transactions: Transaction[] }>> {
+    seller_id?: number;
+    status?: string;
+  } = {}): Promise<ApiResponse<{ transactions: Transaction[]; summary?: TransactionSummary }>> {
     const query = new URLSearchParams();
     if (params.limit) query.append('limit', String(params.limit));
     if (params.offset) query.append('offset', String(params.offset));
+    if (params.date) query.append('date', params.date);
     if (params.start_date) query.append('start_date', params.start_date);
     if (params.end_date) query.append('end_date', params.end_date);
+    if (params.seller_id) query.append('seller_id', String(params.seller_id));
+    if (params.status) query.append('status', params.status);
 
     const qs = query.toString() ? `?${query.toString()}` : '';
-    return request<ApiResponse<{ transactions: Transaction[] }>>(`/pos/transactions${qs}`);
+    return request<ApiResponse<{ transactions: Transaction[]; summary?: TransactionSummary }>>(`/pos/transactions${qs}`);
   },
 
   async getTransactionDetails(id: string): Promise<ApiResponse<Transaction>> {

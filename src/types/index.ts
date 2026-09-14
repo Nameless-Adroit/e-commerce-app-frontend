@@ -73,6 +73,13 @@ export interface Transaction {
   transaction_date: string;
 }
 
+export interface TransactionSummary {
+  total_transactions: number;
+  total_revenue: number;
+  total_discount: number;
+  total_subtotal: number;
+}
+
 /** The checkout endpoint returns this compact receipt payload. */
 export interface CheckoutTransaction {
   transaction_id: string;
