@@ -197,14 +197,21 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    padding: 16
+    paddingHorizontal: 22,
+    paddingTop: 18,
+    paddingBottom: 40
   },
   card: {
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.lg,
-    padding: 22
+    padding: 22,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
   },
   cardTitle: {
     color: theme.text,
@@ -249,7 +256,7 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   roleOptionActive: {
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    backgroundColor: 'rgba(79, 70, 229, 0.08)',
     borderColor: theme.primary
   },
   roleText: {
@@ -258,7 +265,7 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   roleTextActive: {
-    color: '#fff',
+    color: theme.primary,
     fontWeight: '700'
   },
   shopAssignSection: {

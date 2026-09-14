@@ -192,20 +192,26 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32
+    paddingHorizontal: 22,
+    paddingTop: 18,
+    paddingBottom: 40
   },
   actionRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 20
+    gap: 12,
+    marginBottom: 22
   },
   actionCard: {
     flex: 1,
     borderWidth: 1,
     borderRadius: theme.radius.lg,
     padding: 14,
-    alignItems: 'center'
+    alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1
   },
   actionTitle: {
     color: theme.text,
@@ -231,7 +237,12 @@ const styles = StyleSheet.create({
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.lg,
     padding: 18,
-    marginBottom: 20
+    marginBottom: 20,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
   },
   metricRow: {
     flexDirection: 'row',

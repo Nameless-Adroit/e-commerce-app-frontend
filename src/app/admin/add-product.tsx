@@ -246,7 +246,8 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 22,
+    paddingTop: 18,
     paddingBottom: 40
   },
   card: {
@@ -254,7 +255,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.lg,
-    padding: 20
+    padding: 22,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
   },
   sectionHeader: {
     color: theme.text,

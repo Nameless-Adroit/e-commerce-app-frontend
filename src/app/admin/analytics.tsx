@@ -181,7 +181,8 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 22,
+    paddingTop: 18,
     paddingBottom: 40
   },
   bannerCard: {
@@ -190,7 +191,12 @@ const styles = StyleSheet.create({
     borderColor: theme.primary,
     borderRadius: theme.radius.lg,
     padding: 18,
-    marginBottom: 20
+    marginBottom: 20,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
   },
   bannerTextCol: {
     marginBottom: 12
@@ -230,15 +236,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 20
+    marginBottom: 22
   },
   statBox: {
     flex: 1,
     minWidth: '45%',
     backgroundColor: theme.surface,
     borderWidth: 1,
+    borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.lg,
-    padding: 16
+    padding: 16,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
   },
   boxLabel: {
     color: theme.textSecondary,
@@ -260,7 +272,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.lg,
-    padding: 18
+    padding: 18,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
   },
   detailTitle: {
     color: theme.text,

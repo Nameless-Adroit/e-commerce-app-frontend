@@ -69,26 +69,31 @@ export function ReceiptModal({ visible, transaction, onClose }: ReceiptModalProp
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20
+    padding: 24
   },
   modalCard: {
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     padding: 24,
     width: '100%',
     maxWidth: 440,
-    alignItems: 'center'
+    alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4
   },
   iconCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: 'rgba(5, 150, 105, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12
@@ -166,7 +171,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: 'rgba(5, 150, 105, 0.08)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: theme.radius.full,

@@ -212,15 +212,17 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    padding: 16
+    paddingHorizontal: 22,
+    paddingTop: 18,
+    paddingBottom: 40
   },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: theme.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: theme.radius.sm
   },
   addBtnText: {
@@ -234,7 +236,12 @@ const styles = StyleSheet.create({
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.lg,
     padding: 18,
-    marginBottom: 14
+    marginBottom: 14,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
   },
   cardTop: {
     flexDirection: 'row',
@@ -246,7 +253,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(99, 102, 241, 0.12)',
+    backgroundColor: 'rgba(79, 70, 229, 0.08)',
     justifyContent: 'center',
     alignItems: 'center'
   },

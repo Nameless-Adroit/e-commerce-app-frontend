@@ -212,13 +212,14 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 32
+    paddingHorizontal: 22,
+    paddingTop: 18,
+    paddingBottom: 40
   },
   shortcutRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 20
+    marginBottom: 22
   },
   shortcutBtn: {
     flex: 1,
@@ -229,7 +230,12 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderRadius: theme.radius.md,
-    paddingVertical: 12
+    paddingVertical: 13,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1
   },
   shortcutText: {
     color: theme.text,
@@ -258,7 +264,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 20
+    marginBottom: 22
   },
   statCard: {
     flex: 1,
@@ -267,7 +273,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.lg,
-    padding: 16
+    padding: 16,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
   },
   statIcon: {
     width: 42,
@@ -298,7 +309,12 @@ const styles = StyleSheet.create({
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.lg,
     padding: 16,
-    marginBottom: 12
+    marginBottom: 14,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
   },
   shopCardHeader: {
     flexDirection: 'row',

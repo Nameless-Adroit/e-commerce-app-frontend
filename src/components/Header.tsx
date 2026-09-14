@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
@@ -16,6 +17,13 @@ interface HeaderProps {
 export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  // Dynamic top safe inset (guarantees notch & punch-hole clearance with comfortable padding)
+  const topSafePadding = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 16
+  ) + 6;
 
   const getRoleLabel = (role?: string) => {
     switch (role) {
@@ -33,34 +41,32 @@ export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) 
   const roleInfo = getRoleLabel(user?.role);
 
   return (
-    <View style={styles.wrapper}>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
-          <View style={styles.leftCol}>
-            {showBack && (
-              <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                <Ionicons name="chevron-back" size={24} color={theme.text} />
-              </TouchableOpacity>
-            )}
-            <View>
-              <Text style={styles.title}>{title}</Text>
-              {subtitle ? (
-                <Text style={styles.subtitle}>{subtitle}</Text>
-              ) : user?.shop_name ? (
-                <Text style={styles.subtitle}>{user.shop_name} ({user.shop_code})</Text>
-              ) : null}
-            </View>
-          </View>
-
-          <View style={styles.rightCol}>
-            {rightAction}
-            <Badge label={roleInfo.text} variant={roleInfo.variant} />
-            <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-              <Ionicons name="log-out-outline" size={20} color={theme.danger} />
+    <View style={[styles.wrapper, { paddingTop: topSafePadding }]}>
+      <View style={styles.container}>
+        <View style={styles.leftCol}>
+          {showBack && (
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+              <Ionicons name="chevron-back" size={20} color={theme.text} />
             </TouchableOpacity>
+          )}
+          <View style={styles.titleWrapper}>
+            <Text style={styles.title} numberOfLines={1}>{title}</Text>
+            {subtitle ? (
+              <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
+            ) : user?.shop_name ? (
+              <Text style={styles.subtitle} numberOfLines={1}>{user.shop_name} ({user.shop_code})</Text>
+            ) : null}
           </View>
         </View>
-      </SafeAreaView>
+
+        <View style={styles.rightCol}>
+          {rightAction}
+          <Badge label={roleInfo.text} variant={roleInfo.variant} />
+          <TouchableOpacity onPress={logout} style={styles.logoutBtn} activeOpacity={0.7}>
+            <Ionicons name="log-out-outline" size={18} color={theme.danger} />
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }
@@ -70,49 +76,61 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderBottomWidth: 1,
     borderBottomColor: theme.surfaceBorder,
-    paddingTop: Platform.OS === 'android' ? 30 : 0
-  },
-  safeArea: {
-    width: '100%'
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+    zIndex: 10
   },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14
+    paddingHorizontal: 22,
+    paddingTop: 8,
+    paddingBottom: 14
   },
   leftCol: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
+    marginRight: 12
+  },
+  titleWrapper: {
     flex: 1
   },
   backBtn: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: theme.surfaceLight
+    padding: 7,
+    borderRadius: 10,
+    backgroundColor: theme.surfaceLight,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder
   },
   title: {
     color: theme.text,
     fontSize: 18,
-    fontWeight: '700'
+    fontWeight: '700',
+    letterSpacing: -0.3
   },
   subtitle: {
     color: theme.textSecondary,
     fontSize: 12,
-    marginTop: 2
+    marginTop: 2,
+    fontWeight: '500'
   },
   rightCol: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10
+    gap: 10,
+    flexShrink: 0
   },
   logoutBtn: {
     padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 10,
+    backgroundColor: 'rgba(220, 38, 38, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)'
+    borderColor: 'rgba(220, 38, 38, 0.16)'
   }
 });

@@ -254,8 +254,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: theme.surfaceBorder,
     backgroundColor: theme.surface
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.inputBorder,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 8
   },
   searchInput: {
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surfaceLight,
     borderWidth: 1,
     borderColor: theme.warning,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: theme.radius.md
   },
@@ -300,7 +300,8 @@ const styles = StyleSheet.create({
     color: '#fff'
   },
   listContent: {
-    padding: 16,
+    paddingHorizontal: 22,
+    paddingTop: 16,
     paddingBottom: 40
   },
   emptyContainer: {
@@ -319,7 +320,12 @@ const styles = StyleSheet.create({
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.lg,
     padding: 16,
-    marginBottom: 12
+    marginBottom: 14,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
   },
   lowStockBorder: {
     borderColor: 'rgba(245, 158, 11, 0.4)'

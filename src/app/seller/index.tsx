@@ -319,7 +319,8 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 22,
+    paddingTop: 18,
     paddingBottom: 40
   },
   historyBtn: {
@@ -328,7 +329,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surfaceLight
   },
   scannerRow: {
-    marginBottom: 12
+    marginBottom: 14
   },
   scanActionBtn: {
     flexDirection: 'row',
@@ -337,7 +338,12 @@ const styles = StyleSheet.create({
     gap: 10,
     backgroundColor: theme.primary,
     paddingVertical: 14,
-    borderRadius: theme.radius.lg
+    borderRadius: theme.radius.lg,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3
   },
   scanActionText: {
     color: '#fff',
@@ -352,9 +358,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginBottom: 16
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginBottom: 16,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1
   },
   directInput: {
     flex: 1,
@@ -393,8 +404,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.md,
-    padding: 10,
-    marginRight: 10
+    padding: 12,
+    marginRight: 10,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1
   },
   shelfCardTitle: {
     color: theme.text,
@@ -426,8 +442,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.lg,
-    padding: 16,
-    marginBottom: 20
+    padding: 18,
+    marginBottom: 20,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
   },
   cartHeaderRow: {
     flexDirection: 'row',
@@ -530,7 +551,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.lg,
-    padding: 16
+    padding: 18,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
   },
   payLabel: {
     color: theme.textSecondary,
@@ -548,12 +574,12 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surfaceLight,
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: theme.radius.md,
     alignItems: 'center'
   },
   payOptionActive: {
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    backgroundColor: 'rgba(79, 70, 229, 0.08)',
     borderColor: theme.primary
   },
   payText: {
@@ -562,7 +588,7 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   payTextActive: {
-    color: '#fff',
+    color: theme.primary,
     fontWeight: '700'
   },
   totalRow: {

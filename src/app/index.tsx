@@ -254,7 +254,12 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 440,
-    alignSelf: 'center'
+    alignSelf: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3
   },
   formTitle: {
     color: theme.text,
@@ -323,7 +328,7 @@ const styles = StyleSheet.create({
     paddingTop: 16
   },
   personaSectionTitle: {
-    color: theme.textMuted,
+    color: theme.textSecondary,
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 10,
@@ -345,29 +350,29 @@ const styles = StyleSheet.create({
     borderWidth: 1
   },
   chipSuper: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderColor: 'rgba(239, 68, 68, 0.3)'
+    backgroundColor: 'rgba(220, 38, 38, 0.08)',
+    borderColor: 'rgba(220, 38, 38, 0.25)'
   },
   chipTextSuper: {
-    color: '#F87171',
+    color: '#DC2626',
     fontSize: 12,
     fontWeight: '600'
   },
   chipAdmin: {
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    borderColor: 'rgba(99, 102, 241, 0.3)'
+    backgroundColor: 'rgba(79, 70, 229, 0.08)',
+    borderColor: 'rgba(79, 70, 229, 0.25)'
   },
   chipTextAdmin: {
-    color: '#818CF8',
+    color: '#4F46E5',
     fontSize: 12,
     fontWeight: '600'
   },
   chipSeller: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderColor: 'rgba(16, 185, 129, 0.3)'
+    backgroundColor: 'rgba(5, 150, 105, 0.08)',
+    borderColor: 'rgba(5, 150, 105, 0.25)'
   },
   chipTextSeller: {
-    color: '#10B981',
+    color: '#059669',
     fontSize: 12,
     fontWeight: '600'
   },
@@ -384,10 +389,10 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20
+    padding: 24
   },
   modalCard: {
     backgroundColor: theme.surface,

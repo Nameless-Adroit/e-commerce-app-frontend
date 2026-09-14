@@ -121,7 +121,9 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   listContent: {
-    padding: 16
+    paddingHorizontal: 22,
+    paddingTop: 18,
+    paddingBottom: 40
   },
   emptyBox: {
     alignItems: 'center',
@@ -139,7 +141,12 @@ const styles = StyleSheet.create({
     borderColor: theme.surfaceBorder,
     borderRadius: theme.radius.lg,
     padding: 16,
-    marginBottom: 10
+    marginBottom: 12,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
   },
   cardHeader: {
     flexDirection: 'row',

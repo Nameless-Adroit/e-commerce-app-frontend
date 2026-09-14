@@ -88,19 +88,24 @@ export function RestockModal({ visible, product, onClose, onSuccess }: RestockMo
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20
+    padding: 24
   },
   modalCard: {
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     padding: 24,
     width: '100%',
-    maxWidth: 420
+    maxWidth: 420,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4
   },
   title: {
     color: theme.text,
