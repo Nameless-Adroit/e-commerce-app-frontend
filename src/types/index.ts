@@ -71,6 +71,18 @@ export interface Transaction {
   transaction_date: string;
 }
 
+/** The checkout endpoint returns this compact receipt payload. */
+export interface CheckoutTransaction {
+  transaction_id: string;
+  shop_id: number;
+  seller_id: number;
+  total_amount: number;
+  payment_method: 'cash' | 'card' | 'mobile_money';
+  status: 'completed';
+  items_count: number;
+  items: TransactionLineItem[];
+}
+
 export interface DailyReport {
   id?: number;
   shop_id: number;

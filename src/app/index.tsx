@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme/colors';
-import { getApiBaseUrl, setApiBaseUrl } from '../config/apiConfig';
+import { getApiBaseUrl, setApiBaseUrl, initApiConfig } from '../config/apiConfig';
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -25,6 +25,12 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [serverModalVisible, setServerModalVisible] = useState(false);
   const [serverUrlInput, setServerUrlInput] = useState(getApiBaseUrl());
+
+  React.useEffect(() => {
+    initApiConfig().then((url: string) => {
+      setServerUrlInput(url);
+    });
+  }, []);
 
   const handleLogin = async () => {
     if (!identifier.trim() || !password) {
@@ -160,7 +166,10 @@ export default function LoginScreen() {
         {/* Server Config Button */}
         <TouchableOpacity 
           style={styles.serverSettingsBtn}
-          onPress={() => setServerModalVisible(true)}
+          onPress={() => {
+            setServerUrlInput(getApiBaseUrl());
+            setServerModalVisible(true);
+          }}
         >
           <Ionicons name="server-outline" size={14} color={theme.textMuted} />
           <Text style={styles.serverSettingsText}>Server: {getApiBaseUrl()}</Text>
@@ -173,14 +182,14 @@ export default function LoginScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Backend API Host Config</Text>
             <Text style={styles.modalDesc}>
-              Set the backend API host. Use your computer's local IP (e.g., http://192.168.1.X:5000/api) when testing on physical mobile phones.
+              Set the backend API host. Use your computer's local LAN IP (e.g., http://192.168.0.13:3000) when connecting from a physical mobile phone.
             </Text>
 
             <TextInput
               style={styles.modalInput}
               value={serverUrlInput}
               onChangeText={setServerUrlInput}
-              placeholder="http://localhost:5000/api"
+              placeholder="http://192.168.0.13:3000"
               placeholderTextColor={theme.textMuted}
               autoCapitalize="none"
             />

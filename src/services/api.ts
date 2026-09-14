@@ -5,6 +5,7 @@ import {
   User, 
   Product, 
   Transaction, 
+  CheckoutTransaction,
   DailyReport, 
   GlobalSummary, 
   Shop 
@@ -57,17 +58,24 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       headers
     });
 
-    const json = await response.json();
+    const contentType = response.headers.get('content-type') || '';
+    const json = contentType.includes('application/json')
+      ? await response.json()
+      : null;
 
     if (!response.ok) {
-      const errorMsg = json.message || `Request failed with status ${response.status}`;
+      const errorMsg = json?.message || `Request failed with status ${response.status}`;
       const err = new Error(errorMsg);
       (err as any).statusCode = response.status;
       (err as any).response = json;
       throw err;
     }
 
-    return json;
+    if (!json) {
+      throw new Error('The backend returned an invalid response. Expected JSON.');
+    }
+
+    return json as T;
   } catch (err: any) {
     if (err.message === 'Network request failed' || err.name === 'TypeError') {
       throw new Error(`Unable to connect to backend server at ${baseUrl}. Ensure backend is running.`);
@@ -199,8 +207,8 @@ export const posApi = {
     return request<ApiResponse<Product & { is_in_stock: boolean; low_stock_warning: boolean }>>(`/pos/scan/${encodeURIComponent(id)}`);
   },
 
-  async checkout(items: { productId: string; quantity: number }[], paymentMethod = 'cash', notes?: string): Promise<ApiResponse<Transaction>> {
-    return request<ApiResponse<Transaction>>('/pos/checkout', {
+  async checkout(items: { productId: string; quantity: number }[], paymentMethod: Transaction['payment_method'] = 'cash', notes?: string): Promise<ApiResponse<CheckoutTransaction>> {
+    return request<ApiResponse<CheckoutTransaction>>('/pos/checkout', {
       method: 'POST',
       body: JSON.stringify({
         items,

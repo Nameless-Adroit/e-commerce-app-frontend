@@ -36,6 +36,7 @@
   },
   "scripts": {
     "start": "expo start",
+    "start:lan": "expo start --host lan",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",

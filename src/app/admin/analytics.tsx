@@ -42,10 +42,11 @@ export default function AdminAnalytics() {
   const handleTriggerDailyClose = async () => {
     setCompiling(true);
     try {
-      const res = await analyticsApi.triggerDailyClose();
+      await analyticsApi.triggerDailyClose();
+      const reportRes = await analyticsApi.getDailyReport();
       Alert.alert('Daily Close Compiled', 'End-of-day transaction figures, revenue, profit, and shrinkage audit updated successfully.');
-      if (res.data) {
-        setReport(res.data);
+      if (reportRes.data && !('global_summary' in reportRes.data)) {
+        setReport(reportRes.data as DailyReport);
       }
     } catch (err: any) {
       Alert.alert('Compilation Failed', err.message || 'Error compiling daily close');

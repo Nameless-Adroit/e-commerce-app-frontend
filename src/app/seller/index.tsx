@@ -18,7 +18,7 @@ import { ReceiptModal } from '../../components/ReceiptModal';
 import { useCart } from '../../context/CartContext';
 import { posApi, productApi } from '../../services/api';
 import { theme } from '../../theme/colors';
-import { Product, Transaction } from '../../types';
+import { Product, Transaction, CheckoutTransaction } from '../../types';
 
 export default function SellerPOS() {
   const router = useRouter();
@@ -83,7 +83,7 @@ export default function SellerPOS() {
 
       const res = await posApi.checkout(checkoutItems, paymentMethod);
       if (res.data) {
-        setCompletedTxn(res.data);
+        setCompletedTxn(toReceiptTransaction(res.data));
         setReceiptVisible(true);
         clearCart();
         loadQuickProducts(); // refresh stock numbers
@@ -299,6 +299,15 @@ export default function SellerPOS() {
       />
     </View>
   );
+}
+
+/** Adapts the compact checkout response to the receipt component's full model. */
+function toReceiptTransaction(transaction: CheckoutTransaction): Transaction {
+  return {
+    ...transaction,
+    id: transaction.transaction_id,
+    transaction_date: new Date().toISOString()
+  };
 }
 
 const styles = StyleSheet.create({
