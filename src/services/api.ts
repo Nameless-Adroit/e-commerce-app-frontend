@@ -8,7 +8,8 @@ import {
   CheckoutTransaction,
   DailyReport, 
   GlobalSummary, 
-  Shop 
+  Shop,
+  TopProduct 
 } from '../types';
 
 const TOKEN_KEY = 'POS_AUTH_TOKEN';
@@ -184,10 +185,10 @@ export const productApi = {
     });
   },
 
-  async restock(id: string, quantity: number, reason?: string): Promise<ApiResponse<any>> {
+  async restock(id: string, quantity: number, reason?: string, changeType: 'restock' | 'return' = 'restock'): Promise<ApiResponse<any>> {
     return request<ApiResponse<any>>(`/products/${encodeURIComponent(id)}/restock`, {
       method: 'POST',
-      body: JSON.stringify({ quantity, reason })
+      body: JSON.stringify({ quantity, reason, change_type: changeType })
     });
   },
 
@@ -257,6 +258,10 @@ export const analyticsApi = {
 
   async getReportRange(startDate: string, endDate: string): Promise<ApiResponse<{ start_date: string; end_date: string; records: DailyReport[] }>> {
     return request<ApiResponse<any>>(`/analytics/range?start_date=${startDate}&end_date=${endDate}`);
+  },
+
+  async getTopProducts(limit: number = 5): Promise<ApiResponse<{ top_products: TopProduct[] }>> {
+    return request<ApiResponse<{ top_products: TopProduct[] }>>(`/analytics/top-products?limit=${limit}`);
   }
 };
 

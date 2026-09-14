@@ -110,6 +110,17 @@ export interface GlobalSummary {
   total_shrinkage_cost: number;
 }
 
+export interface TopProduct {
+  product_id: string;
+  name: string;
+  category: string;
+  price: number;
+  stock_quantity: number;
+  shop_name?: string;
+  total_units_sold: number;
+  total_revenue: number;
+}
+
 export interface ApiResponse<T = any> {
   success: boolean;
   message?: string;
