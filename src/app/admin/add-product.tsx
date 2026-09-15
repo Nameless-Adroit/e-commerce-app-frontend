@@ -167,24 +167,24 @@ export default function AddProductScreen() {
 
           <View style={styles.rowInputs}>
             <View style={styles.halfCol}>
-              <Text style={styles.label}>Retail Price ($) *</Text>
+              <Text style={styles.label}>Retail Price (TSh) *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="49.99"
+                placeholder="50000"
                 placeholderTextColor={theme.textMuted}
-                keyboardType="decimal-pad"
+                keyboardType="numeric"
                 value={price}
                 onChangeText={setPrice}
               />
             </View>
 
             <View style={styles.halfCol}>
-              <Text style={styles.label}>Cost Price ($)</Text>
+              <Text style={styles.label}>Cost Price (TSh)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="22.50"
+                placeholder="25000"
                 placeholderTextColor={theme.textMuted}
-                keyboardType="decimal-pad"
+                keyboardType="numeric"
                 value={costPrice}
                 onChangeText={setCostPrice}
               />

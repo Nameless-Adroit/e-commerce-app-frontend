@@ -18,6 +18,7 @@ import { ReceiptModal } from '../../components/ReceiptModal';
 import { posApi } from '../../services/api';
 import { theme } from '../../theme/colors';
 import { Transaction, TransactionSummary } from '../../types';
+import { formatCurrency } from '../../utils/currency';
 
 function formatDateToISO(d: Date): string {
   const year = d.getFullYear();
@@ -244,21 +245,21 @@ export default function AdminTransactions() {
           <View style={styles.summaryCol}>
             <Text style={styles.summaryLabel}>Gross Revenue</Text>
             <Text style={[styles.summaryValue, { color: theme.accent }]}>
-              ${(summary?.total_revenue || 0).toFixed(2)}
+              {formatCurrency(summary?.total_revenue || 0)}
             </Text>
           </View>
           <View style={styles.summaryCol}>
             <Text style={styles.summaryLabel}>Discounts</Text>
             <Text style={[styles.summaryValue, { color: (summary?.total_discount || 0) > 0 ? theme.warning : theme.textMuted }]}>
-              ${(summary?.total_discount || 0).toFixed(2)}
+              {formatCurrency(summary?.total_discount || 0)}
             </Text>
           </View>
           <View style={styles.summaryCol}>
             <Text style={styles.summaryLabel}>Avg / Txn</Text>
             <Text style={styles.summaryValue}>
-              ${summary && summary.total_transactions > 0 
-                ? (summary.total_revenue / summary.total_transactions).toFixed(2) 
-                : '0.00'}
+              {formatCurrency(summary && summary.total_transactions > 0 
+                ? (summary.total_revenue / summary.total_transactions) 
+                : 0)}
             </Text>
           </View>
         </View>
@@ -343,12 +344,12 @@ export default function AdminTransactions() {
                 {/* Amount & Discount Highlight */}
                 <View style={styles.cardMid}>
                   <View>
-                    <Text style={styles.totalAmount}>${Number(item.total_amount).toFixed(2)}</Text>
+                    <Text style={styles.totalAmount}>{formatCurrency(item.total_amount)}</Text>
                     {hasDiscount && (
                       <View style={styles.discountTag}>
                         <Ionicons name="pricetag" size={11} color={theme.warning} />
                         <Text style={styles.discountTagText}>
-                          Discount: -${Number(item.discount_amount).toFixed(2)} (Sub: ${Number(item.subtotal_amount || item.total_amount).toFixed(2)})
+                          Discount: -{formatCurrency(item.discount_amount)} (Sub: {formatCurrency(item.subtotal_amount || item.total_amount)})
                         </Text>
                       </View>
                     )}

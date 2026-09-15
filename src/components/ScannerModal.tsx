@@ -128,27 +128,29 @@ export function ScannerModal({ visible, onClose, onScan, sampleIds = [] }: Scann
                 </TouchableOpacity>
               </View>
             ) : (
-              <CameraView
-                style={StyleSheet.absoluteFill}
-                facing="back"
-                enableTorch={torchOn}
-                barcodeScannerSettings={{
-                  barcodeTypes: [
-                    'qr',
-                    'ean13',
-                    'ean8',
-                    'code128',
-                    'code39',
-                    'upc_a',
-                    'upc_e',
-                    'aztec',
-                    'datamatrix',
-                  ],
-                }}
-                onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-              >
-                {/* Viewfinder Reticle */}
-                <View style={styles.reticleOverlay}>
+              <>
+                <CameraView
+                  style={StyleSheet.absoluteFill}
+                  facing="back"
+                  enableTorch={torchOn}
+                  barcodeScannerSettings={{
+                    barcodeTypes: [
+                      'qr',
+                      'ean13',
+                      'ean8',
+                      'code128',
+                      'code39',
+                      'upc_a',
+                      'upc_e',
+                      'aztec',
+                      'datamatrix',
+                    ],
+                  }}
+                  onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+                />
+
+                {/* Viewfinder Reticle Overlay (Positioned Absolutely on Top of CameraView) */}
+                <View style={[StyleSheet.absoluteFill, styles.reticleOverlay]}>
                   <View style={[styles.corner, styles.tl]} />
                   <View style={[styles.corner, styles.tr]} />
                   <View style={[styles.corner, styles.bl]} />
@@ -187,7 +189,7 @@ export function ScannerModal({ visible, onClose, onScan, sampleIds = [] }: Scann
                     </View>
                   )}
                 </View>
-              </CameraView>
+              </>
             )}
           </View>
 

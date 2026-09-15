@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { analyticsApi, productApi } from '../../services/api';
 import { theme } from '../../theme/colors';
 import { DailyReport, Product } from '../../types';
+import { formatCurrency } from '../../utils/currency';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -117,7 +118,7 @@ export default function AdminDashboard() {
               <View style={styles.metricItem}>
                 <Text style={styles.metricLabel}>Total Revenue</Text>
                 <Text style={[styles.metricValue, { color: theme.accent }]}>
-                  ${Number(dailyReport?.revenue_generated || 0).toFixed(2)}
+                  {formatCurrency(dailyReport?.revenue_generated || 0)}
                 </Text>
               </View>
 
@@ -127,7 +128,7 @@ export default function AdminDashboard() {
                   styles.metricValue,
                   { color: Number(dailyReport?.net_profit || 0) < 0 ? theme.danger : theme.secondary }
                 ]}>
-                  {Number(dailyReport?.net_profit || 0) < 0 ? '-' : ''}${Math.abs(Number(dailyReport?.net_profit || 0)).toFixed(2)}
+                  {Number(dailyReport?.net_profit || 0) < 0 ? '-' : ''}{formatCurrency(Math.abs(Number(dailyReport?.net_profit || 0)))}
                 </Text>
               </View>
             </View>
@@ -143,7 +144,7 @@ export default function AdminDashboard() {
               <View style={styles.metricItem}>
                 <Text style={styles.metricLabel}>Inventory Shrinkage</Text>
                 <Text style={[styles.metricValue, { color: (dailyReport?.shrinkage_count || 0) > 0 ? theme.danger : theme.textMuted }]}>
-                  {dailyReport?.shrinkage_count || 0} units (${Number(dailyReport?.shrinkage_cost || 0).toFixed(2)})
+                  {dailyReport?.shrinkage_count || 0} units ({formatCurrency(dailyReport?.shrinkage_cost || 0)})
                 </Text>
               </View>
             </View>
