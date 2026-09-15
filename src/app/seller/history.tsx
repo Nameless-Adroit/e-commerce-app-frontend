@@ -11,9 +11,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Header } from '../../components/Header';
 import { ReceiptModal } from '../../components/ReceiptModal';
+import { CloseBusinessModal } from '../../components/CloseBusinessModal';
 import { posApi } from '../../services/api';
 import { theme } from '../../theme/colors';
 import { Transaction } from '../../types';
+import { formatCurrency } from '../../utils/currency';
 
 export default function SellerHistory() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -21,6 +23,7 @@ export default function SellerHistory() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [closeModalVisible, setCloseModalVisible] = useState(false);
 
   const loadTransactions = async () => {
     try {
@@ -56,7 +59,21 @@ export default function SellerHistory() {
 
   return (
     <View style={styles.container}>
-      <Header title="Transaction Journal" subtitle="Completed Counter Sales" />
+      <Header
+        title="Transaction Journal"
+        subtitle="Completed Counter Sales"
+        rightAction={
+          <TouchableOpacity
+            style={styles.closeDayHeaderBtn}
+            onPress={() => setCloseModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="lock-closed" size={14} color="#ffffff" />
+            <Text style={styles.closeDayHeaderBtnText}>Close Day</Text>
+          </TouchableOpacity>
+        }
+      />
+
 
       {loading ? (
         <View style={styles.center}>
@@ -84,7 +101,7 @@ export default function SellerHistory() {
                   <Ionicons name="receipt" size={18} color={theme.primary} />
                   <Text style={styles.txnId}>{item.id}</Text>
                 </View>
-                <Text style={styles.amountText}>${Number(item.total_amount).toFixed(2)}</Text>
+                <Text style={styles.amountText}>{formatCurrency(item.total_amount)}</Text>
               </View>
 
               <View style={styles.metaRow}>
@@ -106,6 +123,12 @@ export default function SellerHistory() {
         transaction={selectedTxn}
         onClose={() => setModalVisible(false)}
       />
+
+      <CloseBusinessModal
+        visible={closeModalVisible}
+        onClose={() => setCloseModalVisible(false)}
+        onSuccessClose={() => loadTransactions()}
+      />
     </View>
   );
 }
@@ -114,6 +137,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background
+  },
+  closeDayHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme.danger,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    ...theme.shadow
+  },
+  closeDayHeaderBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700'
   },
   center: {
     flex: 1,

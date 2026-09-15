@@ -8,7 +8,8 @@ import {
   TouchableOpacity, 
   ActivityIndicator, 
   RefreshControl,
-  Platform 
+  Platform,
+  Alert 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -20,8 +21,12 @@ import { ShrinkageModal } from '../../components/ShrinkageModal';
 import { productApi } from '../../services/api';
 import { theme } from '../../theme/colors';
 import { Product } from '../../types';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import { formatCurrency } from '../../utils/currency';
 
 export default function AdminProducts() {
+
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +82,21 @@ export default function AdminProducts() {
     setShrinkageVisible(true);
   };
 
+  const handlePrintQRLabels = async (p: Product) => {
+    try {
+      const url = await productApi.getQRLabelsUrl(p.id, 15);
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        await WebBrowser.openBrowserAsync(url);
+      }
+    } catch (err: any) {
+      Alert.alert('Unable to Open PDF', err.message || 'Error generating QR labels PDF.');
+    }
+  };
+
   return (
+
     <View style={styles.container}>
       <Header 
         title="Store Inventory" 
@@ -163,11 +182,11 @@ export default function AdminProducts() {
                 <View style={styles.priceRow}>
                   <View>
                     <Text style={styles.metaLabel}>Retail Price</Text>
-                    <Text style={styles.priceVal}>${Number(item.price).toFixed(2)}</Text>
+                    <Text style={styles.priceVal}>{formatCurrency(item.price, item.currency_symbol)}</Text>
                   </View>
                   <View>
                     <Text style={styles.metaLabel}>Cost Price</Text>
-                    <Text style={styles.costVal}>${Number(item.cost_price || 0).toFixed(2)}</Text>
+                    <Text style={styles.costVal}>{formatCurrency(item.cost_price, item.currency_symbol)}</Text>
                   </View>
                   <View>
                     <Text style={styles.metaLabel}>Available Units</Text>
@@ -180,17 +199,22 @@ export default function AdminProducts() {
                 {/* Management Action Buttons */}
                 <View style={styles.actionGrid}>
                   <TouchableOpacity onPress={() => openRestock(item)} style={styles.btnRestock}>
-                    <Ionicons name="arrow-up-circle" size={16} color="#fff" />
+                    <Ionicons name="arrow-up-circle" size={15} color="#fff" />
                     <Text style={styles.btnRestockText}>Restock</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity onPress={() => openPrice(item)} style={styles.btnPrice}>
-                    <Ionicons name="pencil" size={14} color={theme.text} />
+                    <Ionicons name="pencil" size={13} color={theme.text} />
                     <Text style={styles.btnPriceText}>Price</Text>
                   </TouchableOpacity>
 
+                  <TouchableOpacity onPress={() => handlePrintQRLabels(item)} style={styles.btnQr}>
+                    <Ionicons name="qr-code-outline" size={13} color={theme.primary} />
+                    <Text style={styles.btnQrText}>Labels</Text>
+                  </TouchableOpacity>
+
                   <TouchableOpacity onPress={() => openShrinkage(item)} style={styles.btnShrinkage}>
-                    <Ionicons name="trash-outline" size={14} color={theme.danger} />
+                    <Ionicons name="trash-outline" size={13} color={theme.danger} />
                     <Text style={styles.btnShrinkageText}>Loss</Text>
                   </TouchableOpacity>
                 </View>
@@ -421,6 +445,23 @@ const styles = StyleSheet.create({
     color: theme.text,
     fontSize: 13,
     fontWeight: '600'
+  },
+  btnQr: {
+    flex: 1.2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(79, 70, 229, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(79, 70, 229, 0.25)',
+    paddingVertical: 9,
+    borderRadius: theme.radius.md
+  },
+  btnQrText: {
+    color: theme.primary,
+    fontSize: 12,
+    fontWeight: '700'
   },
   btnShrinkage: {
     flex: 1,

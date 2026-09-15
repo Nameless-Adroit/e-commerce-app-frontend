@@ -1,9 +1,27 @@
 import React from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../context/AuthContext';
 import { CartProvider } from '../context/CartContext';
 import { theme } from '../theme/colors';
+import { ErrorView } from '../components/ErrorView';
+
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  const router = useRouter();
+
+  return (
+    <>
+      <StatusBar style="dark" />
+      <ErrorView
+        title="Application Error"
+        message="An unexpected error occurred while loading this screen."
+        error={error}
+        onRetry={retry}
+        onGoHome={() => router.replace('/')}
+      />
+    </>
+  );
+}
 
 export default function RootLayout() {
   return (
@@ -21,3 +39,4 @@ export default function RootLayout() {
     </AuthProvider>
   );
 }
+

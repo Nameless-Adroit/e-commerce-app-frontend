@@ -10,7 +10,10 @@ import {
   DailyReport, 
   GlobalSummary, 
   Shop,
-  TopProduct 
+  TopProduct,
+  ProductSoldReportItem,
+  ProductsSoldReportResponse,
+  DailyReconciliation
 } from '../types';
 
 const TOKEN_KEY = 'POS_AUTH_TOKEN';
@@ -198,6 +201,13 @@ export const productApi = {
       method: 'POST',
       body: JSON.stringify({ quantity, reason })
     });
+  },
+
+  async getQRLabelsUrl(id: string, count: number = 15): Promise<string> {
+    const baseUrl = getApiBaseUrl();
+    const token = await getAuthToken();
+    const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
+    return `${baseUrl}/products/${encodeURIComponent(id)}/qr-labels?count=${count}${tokenParam}`;
   }
 };
 
@@ -210,7 +220,7 @@ export const posApi = {
   },
 
   async checkout(
-    items: { productId: string; quantity: number }[],
+    items: { productId: string; quantity: number; unitPrice?: number }[],
     paymentMethod: Transaction['payment_method'] = 'cash',
     notes?: string,
     discount = 0
@@ -262,11 +272,32 @@ export const analyticsApi = {
     return request<ApiResponse<any>>(`/analytics/daily${qs}`);
   },
 
+  async getDailyReconciliation(date?: string): Promise<ApiResponse<DailyReconciliation>> {
+    const qs = date ? `?date=${encodeURIComponent(date)}` : '';
+    return request<ApiResponse<DailyReconciliation>>(`/analytics/daily/reconcile${qs}`);
+  },
+
   async triggerDailyClose(date?: string): Promise<ApiResponse<any>> {
     return request<ApiResponse<any>>('/analytics/daily/close', {
       method: 'POST',
       body: JSON.stringify({ date })
     });
+  },
+
+  async getProductsSoldReport(params: {
+    startDate?: string;
+    endDate?: string;
+    category?: string;
+    search?: string;
+  } = {}): Promise<ApiResponse<ProductsSoldReportResponse>> {
+    const query = new URLSearchParams();
+    if (params.startDate) query.append('start_date', params.startDate);
+    if (params.endDate) query.append('end_date', params.endDate);
+    if (params.category) query.append('category', params.category);
+    if (params.search) query.append('search', params.search);
+
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return request<ApiResponse<ProductsSoldReportResponse>>(`/analytics/products-sold${qs}`);
   },
 
   async getReportRange(startDate: string, endDate: string): Promise<ApiResponse<{ start_date: string; end_date: string; records: DailyReport[] }>> {
@@ -286,7 +317,15 @@ export const shopApi = {
     return request<ApiResponse<{ shops: Shop[] }>>('/shops');
   },
 
-  async createShop(shopData: { shop_code: string; name: string; address?: string; phone?: string }): Promise<ApiResponse<Shop>> {
+  async createShop(shopData: {
+    shop_code: string;
+    name: string;
+    address?: string;
+    phone?: string;
+    currency_code?: string;
+    currency_symbol?: string;
+    currency_name?: string;
+  }): Promise<ApiResponse<Shop>> {
     return request<ApiResponse<Shop>>('/shops', {
       method: 'POST',
       body: JSON.stringify(shopData)

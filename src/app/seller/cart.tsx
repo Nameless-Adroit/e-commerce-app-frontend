@@ -8,7 +8,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  Platform
+  Platform,
+  Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -18,19 +19,32 @@ import { useCart } from '../../context/CartContext';
 import { posApi } from '../../services/api';
 import { theme } from '../../theme/colors';
 import { Transaction, CheckoutTransaction } from '../../types';
+import { formatCurrency } from '../../utils/currency';
 
 export default function SellerCartScreen() {
   const router = useRouter();
-  const { items, updateQuantity, removeItem, clearCart, totalAmount, totalUnits } = useCart();
+  const { items, updateQuantity, updateItemPrice, removeItem, clearCart, totalAmount, totalUnits } = useCart();
 
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'mobile_money'>('cash');
   const [checkingOut, setCheckingOut] = useState(false);
   const [receiptVisible, setReceiptVisible] = useState(false);
   const [completedTxn, setCompletedTxn] = useState<Transaction | null>(null);
 
+  // Editable Price State for Seller Override
+  const [editingPriceItem, setEditingPriceItem] = useState<{
+    productId: string;
+    name: string;
+    currentPrice: number;
+    catalogPrice: number;
+    currencySymbol: string;
+  } | null>(null);
+  const [priceInputText, setPriceInputText] = useState('');
+
   // Cashier Discount State
   const [discountType, setDiscountType] = useState<'fixed' | 'percent'>('fixed');
   const [discountInput, setDiscountInput] = useState<string>('');
+
+  const currencySymbol = items[0]?.product.currency_symbol || 'TSh';
 
   // Computations
   const subtotal = totalAmount;
@@ -64,6 +78,23 @@ export default function SellerCartScreen() {
     setDiscountInput(val);
   };
 
+  const handleSaveEditedPrice = () => {
+    if (!editingPriceItem) return;
+    const newPrice = parseFloat(priceInputText);
+    if (isNaN(newPrice) || newPrice < 0) {
+      Alert.alert('Invalid Price', 'Please enter a valid non-negative number for the unit price.');
+      return;
+    }
+    updateItemPrice(editingPriceItem.productId, newPrice);
+    setEditingPriceItem(null);
+  };
+
+  const handleResetCatalogPrice = () => {
+    if (!editingPriceItem) return;
+    updateItemPrice(editingPriceItem.productId, editingPriceItem.catalogPrice);
+    setEditingPriceItem(null);
+  };
+
   const handleCheckout = async () => {
     if (items.length === 0) {
       Alert.alert('Empty Cart', 'Please scan or add at least one product before proceeding to checkout.');
@@ -74,7 +105,8 @@ export default function SellerCartScreen() {
     try {
       const checkoutItems = items.map((i) => ({
         productId: i.product.id,
-        quantity: i.quantity
+        quantity: i.quantity,
+        unitPrice: i.customPrice !== undefined ? i.customPrice : i.product.price
       }));
 
       const res = await posApi.checkout(
@@ -96,6 +128,7 @@ export default function SellerCartScreen() {
       setCheckingOut(false);
     }
   };
+
 
   return (
     <View style={styles.container}>
@@ -136,62 +169,105 @@ export default function SellerCartScreen() {
             <View style={styles.listSection}>
               <Text style={styles.sectionHeader}>Line Items ({items.length})</Text>
 
-              {items.map((item) => (
-                <View key={item.product.id} style={styles.cartCard}>
-                  <View style={styles.itemInfo}>
-                    <Text style={styles.itemName} numberOfLines={2}>
-                      {item.product.name}
-                    </Text>
-                    <Text style={styles.itemId}>
-                      ID: {item.product.id} • {item.product.category}
-                    </Text>
-                    <Text style={styles.itemPrice}>
-                      ${Number(item.product.price).toFixed(2)} each
-                    </Text>
-                    <Text style={styles.stockNotice}>
-                      {item.product.stock_quantity} available in shop
-                    </Text>
-                  </View>
+              {items.map((item) => {
+                const itemSymbol = item.product.currency_symbol || currencySymbol;
+                const effectivePrice = item.customPrice !== undefined ? item.customPrice : item.product.price;
+                const isCustomPrice = item.customPrice !== undefined && item.customPrice !== item.product.price;
 
-                  <View style={styles.actionCol}>
-                    {/* Stepper */}
-                    <View style={styles.stepper}>
+                return (
+                  <View key={item.product.id} style={styles.cartCard}>
+                    <View style={styles.itemInfo}>
+                      <Text style={styles.itemName} numberOfLines={2}>
+                        {item.product.name}
+                      </Text>
+                      <Text style={styles.itemId}>
+                        ID: {item.product.id} • {item.product.category}
+                      </Text>
+
+                      {/* Price Display with Custom Price indicator */}
+                      <View style={styles.priceRow}>
+                        <Text style={[styles.itemPrice, isCustomPrice && styles.customItemPrice]}>
+                          {formatCurrency(effectivePrice, itemSymbol)} each
+                        </Text>
+                        {isCustomPrice && (
+                          <View style={styles.customPriceBadge}>
+                            <Text style={styles.customPriceBadgeText}>Overridden</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {isCustomPrice && (
+                        <Text style={styles.catalogPriceStrikethrough}>
+                          Catalog: {formatCurrency(item.product.price, itemSymbol)}
+                        </Text>
+                      )}
+
+                      {/* Edit Price Trigger */}
                       <TouchableOpacity
-                        onPress={() => updateQuantity(item.product.id, item.quantity - 1)}
-                        style={styles.stepperBtn}
+                        style={styles.editPriceTriggerBtn}
+                        onPress={() => {
+                          setEditingPriceItem({
+                            productId: item.product.id,
+                            name: item.product.name,
+                            currentPrice: effectivePrice,
+                            catalogPrice: item.product.price,
+                            currencySymbol: itemSymbol
+                          });
+                          setPriceInputText(String(effectivePrice));
+                        }}
+                        activeOpacity={0.7}
                       >
-                        <Ionicons name="remove" size={16} color={theme.text} />
+                        <Ionicons name="pencil-outline" size={13} color={theme.primary} />
+                        <Text style={styles.editPriceTriggerText}>
+                          {isCustomPrice ? 'Change / Reset Price' : 'Edit Sale Price'}
+                        </Text>
                       </TouchableOpacity>
 
-                      <Text style={styles.stepperQty}>{item.quantity}</Text>
-
-                      <TouchableOpacity
-                        onPress={() => updateQuantity(item.product.id, item.quantity + 1)}
-                        style={[
-                          styles.stepperBtn,
-                          item.quantity >= item.product.stock_quantity && { opacity: 0.3 }
-                        ]}
-                        disabled={item.quantity >= item.product.stock_quantity}
-                      >
-                        <Ionicons name="add" size={16} color={theme.text} />
-                      </TouchableOpacity>
+                      <Text style={styles.stockNotice}>
+                        {item.product.stock_quantity} available in shop
+                      </Text>
                     </View>
 
-                    {/* Subtotal */}
-                    <Text style={styles.subtotalText}>
-                      ${(item.quantity * item.product.price).toFixed(2)}
-                    </Text>
+                    <View style={styles.actionCol}>
+                      {/* Stepper */}
+                      <View style={styles.stepper}>
+                        <TouchableOpacity
+                          onPress={() => updateQuantity(item.product.id, item.quantity - 1)}
+                          style={styles.stepperBtn}
+                        >
+                          <Ionicons name="remove" size={16} color={theme.text} />
+                        </TouchableOpacity>
 
-                    {/* Remove button */}
-                    <TouchableOpacity
-                      onPress={() => removeItem(item.product.id)}
-                      style={styles.removeBtn}
-                    >
-                      <Ionicons name="trash-outline" size={16} color={theme.danger} />
-                    </TouchableOpacity>
+                        <Text style={styles.stepperQty}>{item.quantity}</Text>
+
+                        <TouchableOpacity
+                          onPress={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          style={[
+                            styles.stepperBtn,
+                            item.quantity >= item.product.stock_quantity && { opacity: 0.3 }
+                          ]}
+                          disabled={item.quantity >= item.product.stock_quantity}
+                        >
+                          <Ionicons name="add" size={16} color={theme.text} />
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Subtotal */}
+                      <Text style={styles.subtotalText}>
+                        {formatCurrency(item.quantity * effectivePrice, itemSymbol)}
+                      </Text>
+
+                      {/* Remove button */}
+                      <TouchableOpacity
+                        onPress={() => removeItem(item.product.id)}
+                        style={styles.removeBtn}
+                      >
+                        <Ionicons name="trash-outline" size={16} color={theme.danger} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
 
             {/* Cashier Discount Section */}
@@ -214,8 +290,9 @@ export default function SellerCartScreen() {
                   { label: '5%', val: '5', type: 'percent' as const },
                   { label: '10%', val: '10', type: 'percent' as const },
                   { label: '15%', val: '15', type: 'percent' as const },
-                  { label: '$5 Off', val: '5', type: 'fixed' as const },
-                  { label: '$10 Off', val: '10', type: 'fixed' as const },
+                  { label: `${currencySymbol} 2,000`, val: '2000', type: 'fixed' as const },
+                  { label: `${currencySymbol} 5,000`, val: '5000', type: 'fixed' as const },
+                  { label: `${currencySymbol} 10,000`, val: '10000', type: 'fixed' as const },
                 ].map((p) => {
                   const isPresetActive = discountType === p.type && discountInput === p.val;
                   return (
@@ -241,7 +318,7 @@ export default function SellerCartScreen() {
                     onPress={() => setDiscountType('fixed')}
                   >
                     <Text style={[styles.typeBtnText, discountType === 'fixed' && styles.typeBtnTextActive]}>
-                      $ Fixed
+                      {currencySymbol} Fixed
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -255,12 +332,12 @@ export default function SellerCartScreen() {
                 </View>
 
                 <View style={styles.discountInputBox}>
-                  <Text style={styles.currencyPrefix}>{discountType === 'fixed' ? '$' : '%'}</Text>
+                  <Text style={styles.currencyPrefix}>{discountType === 'fixed' ? currencySymbol : '%'}</Text>
                   <TextInput
                     style={styles.discountInput}
-                    placeholder="0.00"
+                    placeholder="0"
                     placeholderTextColor={theme.textMuted}
-                    keyboardType="decimal-pad"
+                    keyboardType="numeric"
                     value={discountInput}
                     onChangeText={setDiscountInput}
                   />
@@ -276,7 +353,7 @@ export default function SellerCartScreen() {
                 <View style={styles.discountAppliedNotice}>
                   <Ionicons name="checkmark-circle" size={15} color={theme.accent} />
                   <Text style={styles.discountAppliedText}>
-                    Applying -${finalDiscount.toFixed(2)} discount to order
+                    Applying -{formatCurrency(finalDiscount, currencySymbol)} discount to order
                   </Text>
                 </View>
               )}
@@ -326,7 +403,7 @@ export default function SellerCartScreen() {
 
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Subtotal</Text>
-                <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
+                <Text style={styles.summaryValue}>{formatCurrency(subtotal, currencySymbol)}</Text>
               </View>
 
               {finalDiscount > 0 && (
@@ -335,7 +412,7 @@ export default function SellerCartScreen() {
                     Discount ({discountType === 'percent' ? `${rawDiscountValue}%` : 'Fixed'})
                   </Text>
                   <Text style={[styles.summaryValue, { color: theme.accent, fontWeight: '700' }]}>
-                    -${finalDiscount.toFixed(2)}
+                    -{formatCurrency(finalDiscount, currencySymbol)}
                   </Text>
                 </View>
               )}
@@ -351,7 +428,7 @@ export default function SellerCartScreen() {
 
               <View style={styles.summaryRow}>
                 <Text style={styles.totalLabel}>Total Payable</Text>
-                <Text style={styles.totalValue}>${finalPayableTotal.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>{formatCurrency(finalPayableTotal, currencySymbol)}</Text>
               </View>
 
               <TouchableOpacity
@@ -366,7 +443,7 @@ export default function SellerCartScreen() {
                   <View style={styles.checkoutBtnContent}>
                     <Ionicons name="shield-checkmark" size={20} color="#ffffff" />
                     <Text style={styles.checkoutBtnText}>
-                      Complete Sale • ${finalPayableTotal.toFixed(2)}
+                      Complete Sale • {formatCurrency(finalPayableTotal, currencySymbol)}
                     </Text>
                   </View>
                 )}
@@ -375,6 +452,78 @@ export default function SellerCartScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Edit Unit Price Modal */}
+      <Modal
+        visible={!!editingPriceItem}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditingPriceItem(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.editPriceModalCard}>
+            <View style={styles.modalHeaderRow}>
+              <View style={styles.modalHeaderTitleCol}>
+                <Text style={styles.modalHeaderTitle}>Adjust Unit Price</Text>
+                <Text style={styles.modalHeaderSubtitle}>For this sale transaction only</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setEditingPriceItem(null)}
+                style={styles.modalCloseBtn}
+              >
+                <Ionicons name="close" size={20} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {editingPriceItem && (
+              <>
+                <Text style={styles.modalProductName}>{editingPriceItem.name}</Text>
+                <Text style={styles.modalProductId}>ID: {editingPriceItem.productId}</Text>
+
+                <View style={styles.catalogPriceBox}>
+                  <Text style={styles.catalogPriceBoxLabel}>Catalog Price:</Text>
+                  <Text style={styles.catalogPriceBoxVal}>
+                    {formatCurrency(editingPriceItem.catalogPrice, editingPriceItem.currencySymbol)}
+                  </Text>
+                </View>
+
+                <Text style={styles.inputFieldLabel}>New Selling Price per Unit:</Text>
+                <View style={styles.modalInputWrapper}>
+                  <Text style={styles.modalCurrencySymbol}>{editingPriceItem.currencySymbol}</Text>
+                  <TextInput
+                    style={styles.modalPriceInput}
+                    keyboardType="numeric"
+                    value={priceInputText}
+                    onChangeText={setPriceInputText}
+                    autoFocus
+                    selectTextOnFocus
+                    placeholder="Enter price"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+
+                <View style={styles.modalActionsRow}>
+                  <TouchableOpacity
+                    style={styles.resetCatalogBtn}
+                    onPress={handleResetCatalogPrice}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.resetCatalogBtnText}>Reset to Catalog</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.applyPriceBtn}
+                    onPress={handleSaveEditedPrice}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.applyPriceBtnText}>Apply Price</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* POS Receipt Modal */}
       <ReceiptModal
@@ -748,5 +897,178 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '700'
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  customItemPrice: {
+    color: theme.primary,
+    fontWeight: '800'
+  },
+  customPriceBadge: {
+    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2
+  },
+  customPriceBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: theme.primary
+  },
+  catalogPriceStrikethrough: {
+    fontSize: 11,
+    color: theme.textMuted,
+    textDecorationLine: 'line-through',
+    marginTop: 1
+  },
+  editPriceTriggerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    backgroundColor: 'rgba(79, 70, 229, 0.08)',
+    alignSelf: 'flex-start'
+  },
+  editPriceTriggerText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: theme.primary
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  editPriceModalCard: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder,
+    ...theme.shadow
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12
+  },
+  modalHeaderTitleCol: {
+    flex: 1
+  },
+  modalHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.text
+  },
+  modalHeaderSubtitle: {
+    fontSize: 12,
+    color: theme.textMuted,
+    marginTop: 2
+  },
+  modalCloseBtn: {
+    padding: 4
+  },
+  modalProductName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.text,
+    marginBottom: 2
+  },
+  modalProductId: {
+    fontSize: 11,
+    color: theme.textMuted,
+    marginBottom: 14
+  },
+  catalogPriceBox: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: theme.surfaceLight,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 14
+  },
+  catalogPriceBoxLabel: {
+    fontSize: 12,
+    color: theme.textSecondary
+  },
+  catalogPriceBoxVal: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.text
+  },
+  inputFieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.textSecondary,
+    marginBottom: 6
+  },
+  modalInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.surfaceLight,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: theme.primary,
+    paddingHorizontal: 12,
+    height: 48,
+    marginBottom: 18
+  },
+  modalCurrencySymbol: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.primary,
+    marginRight: 6
+  },
+  modalPriceInput: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.text
+  },
+  modalActionsRow: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  resetCatalogBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: theme.surfaceLight,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  resetCatalogBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.textSecondary
+  },
+  applyPriceBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: theme.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadow
+  },
+  applyPriceBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff'
   }
 });

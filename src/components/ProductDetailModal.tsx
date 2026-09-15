@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/colors';
 import { Product } from '../types';
+import { formatCurrency } from '../utils/currency';
 
 interface ProductDetailModalProps {
   visible: boolean;
@@ -87,7 +88,7 @@ export function ProductDetailModal({
             <View style={styles.metricRow}>
               <View style={styles.priceCol}>
                 <Text style={styles.metricLabel}>Retail Price</Text>
-                <Text style={styles.priceValue}>${Number(product.price).toFixed(2)}</Text>
+                <Text style={styles.priceValue}>{formatCurrency(product.price, product.currency_symbol)}</Text>
               </View>
 
               <View style={styles.stockCol}>
@@ -178,7 +179,7 @@ export function ProductDetailModal({
                   >
                     <Ionicons name="cart" size={18} color="#ffffff" />
                     <Text style={styles.addBtnText}>
-                      Add to Cart • ${(quantity * product.price).toFixed(2)}
+                      Add to Cart • {formatCurrency(quantity * product.price, product.currency_symbol)}
                     </Text>
                   </TouchableOpacity>
                 </View>

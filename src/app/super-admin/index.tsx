@@ -15,8 +15,10 @@ import { Header } from '../../components/Header';
 import { analyticsApi, shopApi } from '../../services/api';
 import { theme } from '../../theme/colors';
 import { GlobalSummary, DailyReport, Shop } from '../../types';
+import { formatCurrency } from '../../utils/currency';
 
 export default function SuperAdminDashboard() {
+
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -102,13 +104,14 @@ export default function SuperAdminDashboard() {
               </View>
               <Text style={styles.statLabel}>Total Revenue</Text>
               <Text style={styles.statValue}>
-                ${Number(globalSummary?.total_revenue || 0).toFixed(2)}
+                {formatCurrency(globalSummary?.total_revenue, 'TSh')}
               </Text>
               <Text style={[
                 styles.statSub,
                 Number(globalSummary?.total_net_profit || 0) < 0 && { color: theme.danger }
               ]}>
-                {Number(globalSummary?.total_net_profit || 0) < 0 ? 'Net Loss' : 'Profit'}: {Number(globalSummary?.total_net_profit || 0) < 0 ? '-' : ''}${Math.abs(Number(globalSummary?.total_net_profit || 0)).toFixed(2)}
+                {Number(globalSummary?.total_net_profit || 0) < 0 ? 'Net Loss: -' : 'Profit: '}
+                {formatCurrency(Math.abs(Number(globalSummary?.total_net_profit || 0)), 'TSh')}
               </Text>
             </View>
 
@@ -129,7 +132,7 @@ export default function SuperAdminDashboard() {
               <Text style={[styles.statValue, { color: theme.danger }]}>
                 {globalSummary?.total_shrinkage_count || 0} units
               </Text>
-              <Text style={styles.statSub}>Cost: ${Number(globalSummary?.total_shrinkage_cost || 0).toFixed(2)}</Text>
+              <Text style={styles.statSub}>Cost: {formatCurrency(globalSummary?.total_shrinkage_cost, 'TSh')}</Text>
             </View>
 
             <View style={styles.statCard}>
@@ -172,7 +175,7 @@ export default function SuperAdminDashboard() {
                 <View style={styles.shopStatsRow}>
                   <View style={styles.shopStatItem}>
                     <Text style={styles.miniLabel}>Today Revenue</Text>
-                    <Text style={styles.miniValue}>${Number(report?.revenue_generated || 0).toFixed(2)}</Text>
+                    <Text style={styles.miniValue}>{formatCurrency(report?.revenue_generated, shop.currency_symbol || 'TSh')}</Text>
                   </View>
                   <View style={styles.shopStatItem}>
                     <Text style={styles.miniLabel}>Units Sold</Text>

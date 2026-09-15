@@ -5,6 +5,7 @@ interface CartContextType {
   items: CartItem[];
   addItem: (product: Product, quantity?: number) => void;
   updateQuantity: (productId: string, quantity: number) => void;
+  updateItemPrice: (productId: string, price: number) => void;
   removeItem: (productId: string) => void;
   clearCart: () => void;
   totalAmount: number;
@@ -47,6 +48,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const updateItemPrice = (productId: string, price: number) => {
+    const validPrice = Math.max(0, isNaN(price) ? 0 : price);
+    setItems((prevItems) =>
+      prevItems.map((item) => {
+        if (item.product.id === productId) {
+          return { ...item, customPrice: validPrice };
+        }
+        return item;
+      })
+    );
+  };
+
   const removeItem = (productId: string) => {
     setItems((prevItems) => prevItems.filter((item) => item.product.id !== productId));
   };
@@ -55,7 +68,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([]);
   };
 
-  const totalAmount = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const totalAmount = items.reduce(
+    (sum, item) => sum + (item.customPrice !== undefined ? item.customPrice : item.product.price) * item.quantity,
+    0
+  );
   const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
@@ -64,6 +80,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         items,
         addItem,
         updateQuantity,
+        updateItemPrice,
         removeItem,
         clearCart,
         totalAmount,

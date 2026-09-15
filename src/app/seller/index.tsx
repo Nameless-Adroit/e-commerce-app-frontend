@@ -19,6 +19,7 @@ import { useCart } from '../../context/CartContext';
 import { posApi, productApi, analyticsApi } from '../../services/api';
 import { theme } from '../../theme/colors';
 import { Product, TopProduct } from '../../types';
+import { formatCurrency } from '../../utils/currency';
 
 export default function SellerCounterScreen() {
   const router = useRouter();
@@ -192,7 +193,7 @@ export default function SellerCounterScreen() {
                 </Text>
                 <View style={styles.topSellerMetrics}>
                   <Text style={styles.topSellerPrice}>
-                    ${Number(topProductLeader.price).toFixed(2)}
+                    {formatCurrency(topProductLeader.price)}
                   </Text>
                   <Text
                     style={[
@@ -290,7 +291,7 @@ export default function SellerCounterScreen() {
 
                   <View style={styles.productFooter}>
                     <View>
-                      <Text style={styles.productPrice}>${Number(p.price).toFixed(2)}</Text>
+                      <Text style={styles.productPrice}>{formatCurrency(p.price, p.currency_symbol)}</Text>
                       <Text
                         style={[
                           styles.productStock,
@@ -336,7 +337,9 @@ export default function SellerCounterScreen() {
                 <Ionicons name="cart" size={16} color="#ffffff" />
                 <Text style={styles.floatingCartBadgeText}>{totalUnits}</Text>
               </View>
-              <Text style={styles.floatingCartTotal}>${totalAmount.toFixed(2)}</Text>
+              <Text style={styles.floatingCartTotal}>
+                {formatCurrency(totalAmount, catalogProducts[0]?.currency_symbol)}
+              </Text>
             </View>
 
             <View style={styles.floatingCartRight}>

@@ -9,6 +9,9 @@ export interface User {
   shop_id: number | null;
   shop_name?: string | null;
   shop_code?: string | null;
+  shop_currency?: string | null;
+  shop_currency_symbol?: string | null;
+  shop_currency_name?: string | null;
 }
 
 export interface Shop {
@@ -17,6 +20,9 @@ export interface Shop {
   name: string;
   address?: string | null;
   phone?: string | null;
+  currency_code?: string;
+  currency_symbol?: string;
+  currency_name?: string;
   is_active?: boolean;
   staff_count?: number;
   product_count?: number;
@@ -35,6 +41,8 @@ export interface Product {
   reorder_level: number;
   shop_name?: string;
   shop_code?: string;
+  currency_code?: string;
+  currency_symbol?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -42,7 +50,9 @@ export interface Product {
 export interface CartItem {
   product: Product;
   quantity: number;
+  customPrice?: number;
 }
+
 
 export interface TransactionLineItem {
   id?: number;
@@ -132,9 +142,58 @@ export interface TopProduct {
   total_revenue: number;
 }
 
+export interface ProductSoldReportItem {
+  product_id: string;
+  name: string;
+  category: string;
+  catalog_price: number;
+  current_stock: number;
+  shop_name?: string;
+  currency_code?: string;
+  currency_symbol?: string;
+  total_quantity_sold: number;
+  total_revenue: number;
+  average_selling_price: number;
+}
+
+export interface ProductsSoldReportResponse {
+  shop_id: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  summary: {
+    distinct_products_sold: number;
+    total_units_sold: number;
+    total_revenue: number;
+  };
+  products: ProductSoldReportItem[];
+}
+
+export interface DailyReconciliation {
+  shop_id: number;
+  date: string;
+  total_sales: number;
+  transactions_count: number;
+  total_items_sold: number;
+  currency_code: string;
+  currency_symbol: string;
+  payment_breakdown: {
+    cash: number;
+    card: number;
+    mobile_money: number;
+  };
+  transactions: Array<{
+    id: string;
+    total_amount: number;
+    payment_method: string;
+    time: string;
+    items_count: number;
+  }>;
+}
+
 export interface ApiResponse<T = any> {
   success: boolean;
   message?: string;
   data?: T;
   stack?: string;
 }
+

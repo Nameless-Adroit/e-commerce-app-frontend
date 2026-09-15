@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/colors';
 import { Transaction } from '../types';
+import { formatCurrency } from '../utils/currency';
 
 interface ReceiptModalProps {
   visible: boolean;
@@ -36,11 +37,11 @@ export function ReceiptModal({ visible, transaction, onClose, title = 'Official 
                 <View style={styles.itemColLeft}>
                   <Text style={styles.itemName}>{item.name || item.product_name || `Item ${index + 1}`}</Text>
                   <Text style={styles.itemSub}>
-                    {item.quantity} x ${Number(item.unit_price).toFixed(2)}
+                    {item.quantity} x {formatCurrency(item.unit_price)}
                   </Text>
                 </View>
                 <Text style={styles.itemTotal}>
-                  ${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}
+                  {formatCurrency(Number(item.quantity) * Number(item.unit_price))}
                 </Text>
               </View>
             ))}
@@ -53,13 +54,13 @@ export function ReceiptModal({ visible, transaction, onClose, title = 'Official 
               <View style={styles.subtotalRow}>
                 <Text style={styles.subtotalLabel}>Subtotal</Text>
                 <Text style={styles.subtotalValue}>
-                  ${Number(transaction.subtotal_amount || transaction.total_amount).toFixed(2)}
+                  {formatCurrency(transaction.subtotal_amount || transaction.total_amount)}
                 </Text>
               </View>
               <View style={styles.discountRow}>
                 <Text style={styles.discountLabel}>Discount Applied</Text>
                 <Text style={styles.discountValue}>
-                  -${Number(transaction.discount_amount).toFixed(2)}
+                  -{formatCurrency(transaction.discount_amount)}
                 </Text>
               </View>
               <View style={styles.divider} />
@@ -68,7 +69,7 @@ export function ReceiptModal({ visible, transaction, onClose, title = 'Official 
 
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total Paid ({transaction.payment_method?.toUpperCase()})</Text>
-            <Text style={styles.totalValue}>${Number(transaction.total_amount).toFixed(2)}</Text>
+            <Text style={styles.totalValue}>{formatCurrency(transaction.total_amount)}</Text>
           </View>
 
           <View style={styles.acidBadge}>

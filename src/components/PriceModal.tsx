@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ActivityInd
 import { theme } from '../theme/colors';
 import { Product } from '../types';
 import { productApi } from '../services/api';
+import { formatCurrency } from '../utils/currency';
 
 interface PriceModalProps {
   visible: boolean;
@@ -20,7 +21,7 @@ export function PriceModal({ visible, product, onClose, onSuccess }: PriceModalP
   useEffect(() => {
     if (product) {
       setPrice(String(product.price));
-      setCostPrice(String(product.cost_price || '0.00'));
+      setCostPrice(String(product.cost_price || ''));
       setReorderLevel(String(product.reorder_level || '5'));
     }
   }, [product]);
@@ -44,7 +45,10 @@ export function PriceModal({ visible, product, onClose, onSuccess }: PriceModalP
         cost_price: numCost,
         reorder_level: numReorder
       });
-      Alert.alert('Pricing Updated', `Price for ${product.name} updated to $${numPrice.toFixed(2)}.`);
+      Alert.alert(
+        'Pricing Updated',
+        `Price for ${product.name} updated to ${formatCurrency(numPrice, product.currency_symbol)}.`
+      );
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -54,6 +58,8 @@ export function PriceModal({ visible, product, onClose, onSuccess }: PriceModalP
     }
   };
 
+  const symbol = product.currency_symbol || 'TSh';
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -62,22 +68,22 @@ export function PriceModal({ visible, product, onClose, onSuccess }: PriceModalP
           <Text style={styles.productName}>{product.name}</Text>
           <Text style={styles.productId}>ID: {product.id}</Text>
 
-          <Text style={styles.label}>Selling Price ($ USD)</Text>
+          <Text style={styles.label}>Selling Price ({symbol})</Text>
           <TextInput
             style={styles.input}
-            placeholder="0.00"
+            placeholder="0"
             placeholderTextColor={theme.textMuted}
-            keyboardType="decimal-pad"
+            keyboardType="numeric"
             value={price}
             onChangeText={setPrice}
           />
 
-          <Text style={styles.label}>Cost / Wholesale Price ($ USD)</Text>
+          <Text style={styles.label}>Cost / Wholesale Price ({symbol})</Text>
           <TextInput
             style={styles.input}
-            placeholder="0.00"
+            placeholder="0"
             placeholderTextColor={theme.textMuted}
-            keyboardType="decimal-pad"
+            keyboardType="numeric"
             value={costPrice}
             onChangeText={setCostPrice}
           />

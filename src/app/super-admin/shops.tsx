@@ -15,6 +15,7 @@ import { Header } from '../../components/Header';
 import { shopApi } from '../../services/api';
 import { theme } from '../../theme/colors';
 import { Shop } from '../../types';
+import { SUPPORTED_CURRENCIES } from '../../utils/currency';
 
 export default function SuperAdminShops() {
   const [shops, setShops] = useState<Shop[]>([]);
@@ -26,7 +27,9 @@ export default function SuperAdminShops() {
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+  const [selectedCurrency, setSelectedCurrency] = useState(SUPPORTED_CURRENCIES[0]);
   const [creating, setCreating] = useState(false);
+
 
   const loadShops = async () => {
     try {
@@ -57,13 +60,17 @@ export default function SuperAdminShops() {
         shop_code: shopCode.trim().toUpperCase(),
         name: name.trim(),
         address: address.trim(),
-        phone: phone.trim()
+        phone: phone.trim(),
+        currency_code: selectedCurrency.code,
+        currency_symbol: selectedCurrency.symbol,
+        currency_name: selectedCurrency.name
       });
-      Alert.alert('Success', `Shop '${name}' created successfully!`);
+      Alert.alert('Success', `Shop '${name}' created successfully with ${selectedCurrency.code} (${selectedCurrency.symbol})!`);
       setShopCode('');
       setName('');
       setAddress('');
       setPhone('');
+      setSelectedCurrency(SUPPORTED_CURRENCIES[0]);
       setModalVisible(false);
       loadShops();
     } catch (err: any) {
@@ -100,7 +107,14 @@ export default function SuperAdminShops() {
                 </View>
                 <View style={styles.titleCol}>
                   <Text style={styles.shopName}>{shop.name}</Text>
-                  <Text style={styles.shopCodeBadge}>Code: {shop.shop_code}</Text>
+                  <View style={styles.codeAndCurrencyRow}>
+                    <Text style={styles.shopCodeBadge}>Code: {shop.shop_code}</Text>
+                    <View style={styles.currencyBadge}>
+                      <Text style={styles.currencyBadgeText}>
+                        {shop.currency_symbol || 'TSh'} ({shop.currency_code || 'TZS'})
+                      </Text>
+                    </View>
+                  </View>
                 </View>
               </View>
 
@@ -157,16 +171,39 @@ export default function SuperAdminShops() {
             <Text style={styles.label}>Business Display Name</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. Uptown Supermarket"
+              placeholder="e.g. Kariakoo Mobile Store"
               placeholderTextColor={theme.textMuted}
               value={name}
               onChangeText={setName}
             />
 
+            {/* Flexible Currency Picker */}
+            <Text style={styles.label}>Operating Currency</Text>
+            <View style={styles.currencyChipsRow}>
+              {SUPPORTED_CURRENCIES.map((curr) => {
+                const isSelected = selectedCurrency.code === curr.code;
+                return (
+                  <TouchableOpacity
+                    key={curr.code}
+                    style={[styles.currencyChip, isSelected && styles.currencyChipActive]}
+                    onPress={() => setSelectedCurrency(curr)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.currencyChipText, isSelected && styles.currencyChipTextActive]}>
+                      {curr.symbol} {curr.code}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={styles.selectedCurrencyDesc}>
+              {selectedCurrency.name} • {selectedCurrency.country}
+            </Text>
+
             <Text style={styles.label}>Physical Address</Text>
             <TextInput
               style={styles.input}
-              placeholder="Store location address"
+              placeholder="Store location address (e.g. Kariakoo Market St)"
               placeholderTextColor={theme.textMuted}
               value={address}
               onChangeText={setAddress}
@@ -175,7 +212,7 @@ export default function SuperAdminShops() {
             <Text style={styles.label}>Contact Phone</Text>
             <TextInput
               style={styles.input}
-              placeholder="+1-555-0199"
+              placeholder="+255 712 345 678"
               placeholderTextColor={theme.textMuted}
               value={phone}
               onChangeText={setPhone}
@@ -372,5 +409,55 @@ const styles = StyleSheet.create({
   confirmText: {
     color: '#fff',
     fontWeight: '700'
+  },
+  codeAndCurrencyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4
+  },
+  currencyBadge: {
+    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6
+  },
+  currencyBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669'
+  },
+  currencyChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 6
+  },
+  currencyChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: theme.surfaceLight,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder
+  },
+  currencyChipActive: {
+    backgroundColor: 'rgba(79, 70, 229, 0.12)',
+    borderColor: theme.primary
+  },
+  currencyChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.textSecondary
+  },
+  currencyChipTextActive: {
+    color: theme.primary,
+    fontWeight: '800'
+  },
+  selectedCurrencyDesc: {
+    fontSize: 11,
+    color: theme.accent,
+    fontWeight: '600',
+    marginBottom: 12
   }
 });

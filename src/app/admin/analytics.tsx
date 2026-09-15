@@ -1,63 +1,77 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  ActivityIndicator, 
-  Alert,
-  RefreshControl 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { Header } from '../../components/Header';
 import { analyticsApi } from '../../services/api';
 import { theme } from '../../theme/colors';
-import { DailyReport } from '../../types';
+import { ProductSoldReportItem, ProductsSoldReportResponse } from '../../types';
+import { formatCurrency } from '../../utils/currency';
 
-function formatDateToISO(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function parseISODate(dateStr: string): Date {
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-  }
-  return new Date();
-}
-
-function formatDisplayDate(dateStr: string): string {
-  const d = parseISODate(dateStr);
-  return d.toLocaleDateString(undefined, {
-    weekday: 'short',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-}
+type TimeFilter = 'TODAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'ALL_TIME';
 
 export default function AdminAnalytics() {
-  const router = useRouter();
-  const todayStr = React.useMemo(() => formatDateToISO(new Date()), []);
-  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
-  const [report, setReport] = useState<DailyReport | null>(null);
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('THIS_MONTH');
+  const [reportData, setReportData] = useState<ProductsSoldReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [compiling, setCompiling] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
 
-  const loadReport = async (dateToLoad: string = selectedDate) => {
+  const computeDateRange = (filter: TimeFilter): { startDate?: string; endDate?: string } => {
+    const today = new Date();
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const endDate = formatDate(today);
+
+    if (filter === 'TODAY') {
+      return { startDate: endDate, endDate };
+    }
+
+    if (filter === 'THIS_WEEK') {
+      const start = new Date(today);
+      start.setDate(today.getDate() - 7);
+      return { startDate: formatDate(start), endDate };
+    }
+
+    if (filter === 'THIS_MONTH') {
+      const start = new Date(today.getFullYear(), today.getMonth(), 1);
+      return { startDate: formatDate(start), endDate };
+    }
+
+    // ALL_TIME
+    return {};
+  };
+
+  const loadReport = async () => {
+    setLoading(true);
     try {
-      const res = await analyticsApi.getDailyReport(dateToLoad);
-      if (res.data && !('global_summary' in res.data)) {
-        setReport(res.data as DailyReport);
+      const { startDate, endDate } = computeDateRange(timeFilter);
+      const res = await analyticsApi.getProductsSoldReport({
+        startDate,
+        endDate,
+        search: searchQuery.trim() || undefined,
+        category: selectedCategory !== 'ALL' ? selectedCategory : undefined
+      });
+
+      if (res.data) {
+        setReportData(res.data);
       }
     } catch (err) {
-      console.error('Error fetching daily report:', err);
+      console.error('Error loading products sold report:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -65,235 +79,260 @@ export default function AdminAnalytics() {
   };
 
   useEffect(() => {
-    loadReport(selectedDate);
-  }, [selectedDate]);
+    loadReport();
+  }, [timeFilter, selectedCategory]);
 
-  const handlePrevDay = () => {
-    const current = parseISODate(selectedDate);
-    current.setDate(current.getDate() - 1);
-    setSelectedDate(formatDateToISO(current));
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadReport();
   };
 
-  const handleNextDay = () => {
-    const current = parseISODate(selectedDate);
-    current.setDate(current.getDate() + 1);
-    setSelectedDate(formatDateToISO(current));
+  const products = reportData?.products || [];
+  const summary = reportData?.summary || {
+    distinct_products_sold: 0,
+    total_units_sold: 0,
+    total_revenue: 0
   };
 
-  const handleTriggerDailyClose = async () => {
-    setCompiling(true);
-    try {
-      await analyticsApi.triggerDailyClose(selectedDate);
-      const reportRes = await analyticsApi.getDailyReport(selectedDate);
-      Alert.alert('Daily Close Compiled', `End-of-day audit figures for ${selectedDate} compiled successfully.`);
-      if (reportRes.data && !('global_summary' in reportRes.data)) {
-        setReport(reportRes.data as DailyReport);
-      }
-    } catch (err: any) {
-      Alert.alert('Compilation Failed', err.message || 'Error compiling daily close');
-    } finally {
-      setCompiling(false);
+  const categories = ['ALL', ...Array.from(new Set(products.map((p) => p.category || 'General')))];
+
+  const filteredProducts = products.filter((p) => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return p.name.toLowerCase().includes(q) || p.product_id.toLowerCase().includes(q);
     }
-  };
+    return true;
+  });
+
+  const currencySymbol = products[0]?.currency_symbol || 'TSh';
 
   return (
     <View style={styles.container}>
-      <Header title="Daily Close & Analytics" subtitle="Revenue, Profit & Shrinkage (SRS 3.4)" />
+      <Header
+        title="Products Sold Report"
+        subtitle="Tabular summary of product volume, turnover & movement"
+      />
 
-      {/* Date Stepper Bar */}
-      <View style={styles.dateBar}>
-        <View style={styles.dateControlsRow}>
-          <TouchableOpacity 
-            style={styles.navArrowBtn} 
-            onPress={handlePrevDay}
-            accessibilityLabel="Previous Day"
-          >
-            <Ionicons name="chevron-back" size={20} color={theme.text} />
-          </TouchableOpacity>
-
-          <View style={styles.dateDisplayBtn}>
-            <Ionicons name="calendar" size={18} color={theme.primary} />
-            <View style={styles.dateTextGroup}>
-              <Text style={styles.dateDisplayMain}>{formatDisplayDate(selectedDate)}</Text>
-              <Text style={styles.dateDisplaySub}>
-                {selectedDate} {selectedDate === todayStr ? '• (Today)' : ''}
-              </Text>
-            </View>
-          </View>
-
-          <TouchableOpacity 
-            style={styles.navArrowBtn} 
-            onPress={handleNextDay}
-            accessibilityLabel="Next Day"
-          >
-            <Ionicons name="chevron-forward" size={20} color={theme.text} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.presetsRow}>
-          <TouchableOpacity 
-            style={[styles.presetChip, selectedDate === todayStr && styles.presetChipActive]}
-            onPress={() => setSelectedDate(todayStr)}
-          >
-            <Text style={[styles.presetChipText, selectedDate === todayStr && styles.presetChipTextActive]}>
-              Today
-            </Text>
-          </TouchableOpacity>
-
-          {(() => {
-            const y = new Date();
-            y.setDate(y.getDate() - 1);
-            const yStr = formatDateToISO(y);
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+      >
+        {/* Time Period Filter Tabs */}
+        <View style={styles.timeTabsRow}>
+          {(
+            [
+              { key: 'TODAY', label: 'Today' },
+              { key: 'THIS_WEEK', label: 'This Week' },
+              { key: 'THIS_MONTH', label: 'This Month' },
+              { key: 'ALL_TIME', label: 'All Time' }
+            ] as const
+          ).map((tab) => {
+            const isActive = timeFilter === tab.key;
             return (
-              <TouchableOpacity 
-                style={[styles.presetChip, selectedDate === yStr && styles.presetChipActive]}
-                onPress={() => setSelectedDate(yStr)}
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.timeTab, isActive && styles.timeTabActive]}
+                onPress={() => setTimeFilter(tab.key)}
+                activeOpacity={0.8}
               >
-                <Text style={[styles.presetChipText, selectedDate === yStr && styles.presetChipTextActive]}>
-                  Yesterday
+                <Text style={[styles.timeTabText, isActive && styles.timeTabTextActive]}>
+                  {tab.label}
                 </Text>
               </TouchableOpacity>
             );
-          })()}
+          })}
         </View>
-      </View>
 
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      ) : (
-        <ScrollView 
-          style={styles.scroll} 
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadReport(); }} tintColor={theme.primary} />}
-        >
-          {/* Daily Close Action Header Banner */}
-          <View style={styles.bannerCard}>
-            <View style={styles.bannerTextCol}>
-              <Text style={styles.bannerTitle}>Close of Business Day</Text>
-              <Text style={styles.bannerDesc}>
-                Snapshot sales data, calculate net profit, and record inventory shrinkage for {selectedDate}.
-              </Text>
+        {/* High Level KPI Metrics Banner */}
+        <View style={styles.kpiRow}>
+          <View style={styles.kpiCard}>
+            <View style={styles.kpiIconBox}>
+              <Ionicons name="cube-outline" size={18} color={theme.primary} />
             </View>
-
-            <TouchableOpacity 
-              style={[styles.compileBtn, compiling && { opacity: 0.7 }]}
-              onPress={handleTriggerDailyClose}
-              disabled={compiling}
-            >
-              {compiling ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="calculator-outline" size={18} color="#fff" />
-                  <Text style={styles.compileBtnText}>Compile Close</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            <Text style={styles.kpiVal}>{summary.total_units_sold.toLocaleString()}</Text>
+            <Text style={styles.kpiLabel}>Total Units Sold</Text>
           </View>
 
-          {/* Core Analytics Cards */}
-          <Text style={styles.sectionTitle}>Daily Financial Audit</Text>
-          <View style={styles.grid}>
-            <View style={[styles.statBox, { borderColor: theme.accent }]}>
-              <Ionicons name="cash" size={24} color={theme.accent} />
-              <Text style={styles.boxLabel}>Gross Revenue</Text>
-              <Text style={[styles.boxValue, { color: theme.accent }]}>
-                ${Number(report?.revenue_generated || 0).toFixed(2)}
-              </Text>
-              <Text style={styles.boxSub}>From customer checkouts</Text>
+          <View style={styles.kpiCard}>
+            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(5, 150, 105, 0.1)' }]}>
+              <Ionicons name="wallet-outline" size={18} color="#059669" />
             </View>
+            <Text style={[styles.kpiVal, { color: '#059669' }]}>
+              {formatCurrency(summary.total_revenue, currencySymbol)}
+            </Text>
+            <Text style={styles.kpiLabel}>Total Revenue</Text>
+          </View>
 
-            {(() => {
-              const profit = Number(report?.net_profit || 0);
-              const isNeg = profit < 0;
-              const formattedProfit = `${isNeg ? '-' : ''}$${Math.abs(profit).toFixed(2)}`;
+          <View style={styles.kpiCard}>
+            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(217, 119, 6, 0.1)' }]}>
+              <Ionicons name="pricetags-outline" size={18} color="#D97706" />
+            </View>
+            <Text style={styles.kpiVal}>{summary.distinct_products_sold}</Text>
+            <Text style={styles.kpiLabel}>Distinct Items</Text>
+          </View>
+        </View>
+
+        {/* Search and Filters Bar */}
+        <View style={styles.filterBar}>
+          <View style={styles.searchBox}>
+            <Ionicons name="search" size={16} color={theme.textMuted} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search product name or ID..."
+              placeholderTextColor={theme.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={loadReport}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Category Filter Chips */}
+        {categories.length > 1 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+            {categories.map((cat) => {
+              const isActive = selectedCategory === cat;
               return (
-                <View style={[styles.statBox, { borderColor: isNeg ? theme.danger : theme.secondary }]}>
-                  <Ionicons name={isNeg ? 'trending-down' : 'trending-up'} size={24} color={isNeg ? theme.danger : theme.secondary} />
-                  <Text style={styles.boxLabel}>{isNeg ? 'Net Loss' : 'Net Profit'}</Text>
-                  <Text style={[styles.boxValue, { color: isNeg ? theme.danger : theme.secondary }]}>
-                    {formattedProfit}
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.categoryChip, isActive && styles.categoryChipActive]}
+                  onPress={() => setSelectedCategory(cat)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>
+                    {cat}
                   </Text>
-                  <Text style={styles.boxSub}>Cost: ${Number(report?.total_cost || 0).toFixed(2)}</Text>
-                </View>
+                </TouchableOpacity>
               );
-            })()}
+            })}
+          </ScrollView>
+        )}
 
-            <View style={[styles.statBox, { borderColor: theme.primary }]}>
-              <Ionicons name="cart" size={24} color={theme.primary} />
-              <Text style={styles.boxLabel}>Total Units Sold</Text>
-              <Text style={styles.boxValue}>{report?.total_units_sold || 0}</Text>
-              <Text style={styles.boxSub}>{report?.total_transactions || 0} Transactions</Text>
+        {/* Tabular Sales Report Table */}
+        <View style={styles.tableCard}>
+          <View style={styles.tableCardHeader}>
+            <View style={styles.tableHeaderTitleRow}>
+              <Ionicons name="grid-outline" size={18} color={theme.primary} />
+              <Text style={styles.tableTitle}>Sales Movement Ledger</Text>
             </View>
-
-            <View style={[styles.statBox, { borderColor: theme.danger }]}>
-              <Ionicons name="alert-circle" size={24} color={theme.danger} />
-              <Text style={styles.boxLabel}>Inventory Shrinkage</Text>
-              <Text style={[styles.boxValue, { color: theme.danger }]}>
-                {report?.shrinkage_count || 0} units
-              </Text>
-              <Text style={styles.boxSub}>Loss: ${Number(report?.shrinkage_cost || 0).toFixed(2)}</Text>
-            </View>
+            <Text style={styles.tableCountBadge}>
+              {filteredProducts.length} product{filteredProducts.length === 1 ? '' : 's'}
+            </Text>
           </View>
 
-          {/* Details Breakdown */}
-          <View style={styles.detailCard}>
-            <Text style={styles.detailTitle}>Audit Summary Details</Text>
-            
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Report Date</Text>
-              <Text style={styles.detailVal}>{report?.report_date}</Text>
+          {loading ? (
+            <View style={styles.centerLoading}>
+              <ActivityIndicator size="large" color={theme.primary} />
+              <Text style={styles.loadingText}>Compiling tabular report...</Text>
             </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Completed Transactions</Text>
-              <Text style={styles.detailVal}>{report?.total_transactions} sales</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Wholesale Goods Cost</Text>
-              <Text style={styles.detailVal}>${Number(report?.total_cost || 0).toFixed(2)}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Damaged / Stolen Discrepancy Cost</Text>
-              <Text style={[styles.detailVal, { color: theme.danger }]}>
-                -${Number(report?.shrinkage_cost || 0).toFixed(2)}
+          ) : filteredProducts.length === 0 ? (
+            <View style={styles.emptyTableBox}>
+              <Ionicons name="bar-chart-outline" size={48} color={theme.textMuted} />
+              <Text style={styles.emptyTableTitle}>No Product Sales Recorded</Text>
+              <Text style={styles.emptyTableSub}>
+                No completed transactions match the selected period and filters.
               </Text>
             </View>
-            <View style={[styles.detailRow, styles.lastRow]}>
-              <Text style={styles.finalLabel}>Net Operational Surplus</Text>
-              {(() => {
-                const surplus = Number(report?.net_profit || 0) - Number(report?.shrinkage_cost || 0);
-                const isNeg = surplus < 0;
-                return (
-                  <Text style={[styles.finalVal, { color: isNeg ? theme.danger : theme.accent }]}>
-                    {isNeg ? '-' : ''}${Math.abs(surplus).toFixed(2)}
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+              <View style={styles.tableContainer}>
+                {/* Table Header Row */}
+                <View style={styles.tableHeaderRow}>
+                  <Text style={[styles.thText, styles.colProduct]}>Product & Code</Text>
+                  <Text style={[styles.thText, styles.colCategory]}>Category</Text>
+                  <Text style={[styles.thText, styles.colStock]}>Stock</Text>
+                  <Text style={[styles.thText, styles.colQty]}>Units Sold</Text>
+                  <Text style={[styles.thText, styles.colRevenue]}>Total Revenue</Text>
+                  <Text style={[styles.thText, styles.colAvgPrice]}>Avg Selling Price</Text>
+                </View>
+
+                {/* Table Data Rows */}
+                {filteredProducts.map((item, idx) => {
+                  const isEven = idx % 2 === 0;
+                  const itemSymbol = item.currency_symbol || currencySymbol;
+
+                  return (
+                    <View key={item.product_id} style={[styles.tableRow, isEven && styles.tableRowEven]}>
+                      {/* Product Name & ID */}
+                      <View style={styles.colProduct}>
+                        <Text style={styles.productNameText} numberOfLines={2}>
+                          {item.name}
+                        </Text>
+                        <Text style={styles.productIdText}>{item.product_id}</Text>
+                      </View>
+
+                      {/* Category */}
+                      <View style={styles.colCategory}>
+                        <View style={styles.categoryPill}>
+                          <Text style={styles.categoryPillText} numberOfLines={1}>
+                            {item.category || 'General'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Current Stock */}
+                      <View style={styles.colStock}>
+                        <Text
+                          style={[
+                            styles.stockText,
+                            item.current_stock <= 5 && { color: theme.danger, fontWeight: '700' }
+                          ]}
+                        >
+                          {item.current_stock}
+                        </Text>
+                      </View>
+
+                      {/* Quantity Sold */}
+                      <View style={styles.colQty}>
+                        <View style={styles.qtyBadge}>
+                          <Text style={styles.qtyBadgeText}>{item.total_quantity_sold}</Text>
+                        </View>
+                      </View>
+
+                      {/* Total Sales Volume / Revenue */}
+                      <View style={styles.colRevenue}>
+                        <Text style={styles.revenueText}>
+                          {formatCurrency(item.total_revenue, itemSymbol)}
+                        </Text>
+                      </View>
+
+                      {/* Average Selling Price */}
+                      <View style={styles.colAvgPrice}>
+                        <Text style={styles.avgPriceText}>
+                          {formatCurrency(item.average_selling_price, itemSymbol)}
+                        </Text>
+                        {item.catalog_price !== item.average_selling_price && (
+                          <Text style={styles.catalogRefText}>
+                            (Cat: {formatCurrency(item.catalog_price, itemSymbol)})
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })}
+
+                {/* Table Footer Summary Row */}
+                <View style={styles.tableFooterRow}>
+                  <Text style={[styles.tfText, styles.colProduct]}>Total Summary</Text>
+                  <Text style={[styles.tfText, styles.colCategory]}>—</Text>
+                  <Text style={[styles.tfText, styles.colStock]}>—</Text>
+                  <Text style={[styles.tfText, styles.colQty]}>{summary.total_units_sold}</Text>
+                  <Text style={[styles.tfText, styles.colRevenue, { color: '#059669' }]}>
+                    {formatCurrency(summary.total_revenue, currencySymbol)}
                   </Text>
-                );
-              })()}
-            </View>
-          </View>
-
-          {/* Inspect Transactions Button */}
-          <TouchableOpacity 
-            style={styles.inspectTxnsBtn}
-            onPress={() => router.push({ pathname: '/admin/transactions', params: { date: selectedDate } } as any)}
-          >
-            <View style={styles.inspectTxnsLeft}>
-              <Ionicons name="receipt" size={20} color="#fff" />
-              <View>
-                <Text style={styles.inspectTxnsTitle}>
-                  Inspect Transactions ({report?.total_transactions || 0} sales)
-                </Text>
-                <Text style={styles.inspectTxnsSub}>
-                  View all itemized receipts for {selectedDate}
-                </Text>
+                  <Text style={[styles.tfText, styles.colAvgPrice]}>—</Text>
+                </View>
               </View>
-            </View>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </TouchableOpacity>
-        </ScrollView>
-      )}
+            </ScrollView>
+          )}
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -303,248 +342,305 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.background
   },
-  dateBar: {
+  scroll: {
+    flex: 1
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40
+  },
+  timeTabsRow: {
+    flexDirection: 'row',
     backgroundColor: theme.surface,
+    borderRadius: 12,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder,
+    marginBottom: 14,
+    ...theme.shadow
+  },
+  timeTab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8
+  },
+  timeTabActive: {
+    backgroundColor: theme.primary,
+    ...theme.shadow
+  },
+  timeTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.textSecondary
+  },
+  timeTabTextActive: {
+    color: '#ffffff',
+    fontWeight: '700'
+  },
+  kpiRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14
+  },
+  kpiCard: {
+    flex: 1,
+    backgroundColor: theme.surface,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder,
+    alignItems: 'center',
+    ...theme.shadow
+  },
+  kpiIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6
+  },
+  kpiVal: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: theme.text,
+    textAlign: 'center'
+  },
+  kpiLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: theme.textSecondary,
+    marginTop: 2,
+    textAlign: 'center'
+  },
+  filterBar: {
+    marginBottom: 10
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder,
+    paddingHorizontal: 12,
+    height: 42,
+    gap: 8
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: theme.text
+  },
+  categoryScroll: {
+    gap: 8,
+    marginBottom: 14
+  },
+  categoryChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder
+  },
+  categoryChipActive: {
+    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+    borderColor: theme.primary
+  },
+  categoryChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.textSecondary
+  },
+  categoryChipTextActive: {
+    color: theme.primary,
+    fontWeight: '700'
+  },
+  tableCard: {
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder,
+    overflow: 'hidden',
+    ...theme.shadow
+  },
+  tableCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: theme.surfaceBorder
   },
-  dateControlsRow: {
+  tableHeaderTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between'
+    gap: 8
   },
-  navArrowBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  dateDisplayBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    marginHorizontal: 10,
-    backgroundColor: 'rgba(99, 102, 241, 0.08)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.25)'
-  },
-  dateTextGroup: {
-    alignItems: 'center',
-    marginHorizontal: 8
-  },
-  dateDisplayMain: {
-    color: theme.text,
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  dateDisplaySub: {
-    color: theme.textMuted,
-    fontSize: 11,
-    marginTop: 2
-  },
-  presetsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 8
-  },
-  presetChip: {
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: theme.surfaceBorder
-  },
-  presetChipActive: {
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
-    borderColor: theme.primary
-  },
-  presetChipText: {
-    fontSize: 12,
-    color: theme.textMuted,
-    fontWeight: '500'
-  },
-  presetChipTextActive: {
-    color: theme.primary,
-    fontWeight: '700'
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  scroll: {
-    flex: 1
-  },
-  scrollContent: {
-    paddingHorizontal: 22,
-    paddingTop: 18,
-    paddingBottom: 40
-  },
-  bannerCard: {
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.primary,
-    borderRadius: theme.radius.lg,
-    padding: 18,
-    marginBottom: 20,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2
-  },
-  bannerTextCol: {
-    marginBottom: 12
-  },
-  bannerTitle: {
-    color: theme.text,
-    fontSize: 16,
-    fontWeight: '700'
-  },
-  bannerDesc: {
-    color: theme.textSecondary,
-    fontSize: 12,
-    marginTop: 4,
-    lineHeight: 16
-  },
-  compileBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: theme.primary,
-    paddingVertical: 12,
-    borderRadius: theme.radius.md
-  },
-  compileBtnText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20
-  },
-  statBox: {
-    width: '48%',
-    flexGrow: 1,
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.surfaceBorder,
-    borderRadius: theme.radius.lg,
-    padding: 16,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1
-  },
-  boxLabel: {
-    color: theme.textSecondary,
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 8
-  },
-  boxValue: {
-    color: theme.text,
-    fontSize: 20,
-    fontWeight: '800',
-    marginVertical: 4
-  },
-  boxSub: {
-    color: theme.textMuted,
-    fontSize: 11
-  },
-  sectionTitle: {
-    color: theme.text,
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12
-  },
-  detailCard: {
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.surfaceBorder,
-    borderRadius: theme.radius.lg,
-    padding: 18,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2
-  },
-  detailTitle: {
-    color: theme.text,
+  tableTitle: {
     fontSize: 15,
     fontWeight: '700',
-    marginBottom: 14
+    color: theme.text
   },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.surfaceLight
-  },
-  lastRow: {
-    borderBottomWidth: 0,
-    marginTop: 6,
-    paddingTop: 12
-  },
-  detailLabel: {
-    color: theme.textSecondary,
-    fontSize: 13
-  },
-  detailVal: {
-    color: theme.text,
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  finalLabel: {
-    color: theme.text,
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  finalVal: {
-    color: theme.accent,
-    fontSize: 16,
-    fontWeight: '800'
-  },
-  inspectTxnsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: theme.primary,
-    borderRadius: theme.radius.lg,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginTop: 16
-  },
-  inspectTxnsLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12
-  },
-  inspectTxnsTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  inspectTxnsSub: {
-    color: 'rgba(255, 255, 255, 0.8)',
+  tableCountBadge: {
     fontSize: 11,
+    fontWeight: '600',
+    color: theme.textSecondary,
+    backgroundColor: theme.surfaceLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6
+  },
+  centerLoading: {
+    padding: 40,
+    alignItems: 'center'
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 13,
+    color: theme.textSecondary
+  },
+  emptyTableBox: {
+    padding: 40,
+    alignItems: 'center'
+  },
+  emptyTableTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.text,
+    marginTop: 12
+  },
+  emptyTableSub: {
+    fontSize: 13,
+    color: theme.textSecondary,
+    textAlign: 'center',
+    marginTop: 6,
+    maxWidth: 280
+  },
+  tableContainer: {
+    minWidth: 700
+  },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    backgroundColor: theme.surfaceLight,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.surfaceBorder
+  },
+  thText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.surfaceBorder
+  },
+  tableRowEven: {
+    backgroundColor: 'rgba(248, 250, 252, 0.5)'
+  },
+  tableFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.surfaceLight,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderTopWidth: 2,
+    borderTopColor: theme.surfaceBorder
+  },
+  tfText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: theme.text
+  },
+  // Column Widths
+  colProduct: {
+    width: 200,
+    paddingRight: 10
+  },
+  colCategory: {
+    width: 110,
+    paddingRight: 10
+  },
+  colStock: {
+    width: 70,
+    alignItems: 'center'
+  },
+  colQty: {
+    width: 90,
+    alignItems: 'center'
+  },
+  colRevenue: {
+    width: 120,
+    alignItems: 'flex-end',
+    paddingRight: 10
+  },
+  colAvgPrice: {
+    width: 120,
+    alignItems: 'flex-end'
+  },
+  productNameText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.text
+  },
+  productIdText: {
+    fontSize: 10,
+    color: theme.textMuted,
+    fontFamily: 'monospace',
+    marginTop: 2
+  },
+  categoryPill: {
+    backgroundColor: theme.surfaceLight,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start'
+  },
+  categoryPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: theme.textSecondary
+  },
+  stockText: {
+    fontSize: 13,
+    color: theme.textSecondary
+  },
+  qtyBadge: {
+    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8
+  },
+  qtyBadgeText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: theme.primary
+  },
+  revenueText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.text
+  },
+  avgPriceText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.textSecondary
+  },
+  catalogRefText: {
+    fontSize: 10,
+    color: theme.textMuted,
     marginTop: 2
   }
 });

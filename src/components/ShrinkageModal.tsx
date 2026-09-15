@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ActivityInd
 import { theme } from '../theme/colors';
 import { Product } from '../types';
 import { productApi } from '../services/api';
+import { formatCurrency } from '../utils/currency';
 
 interface ShrinkageModalProps {
   visible: boolean;
@@ -35,7 +36,7 @@ export function ShrinkageModal({ visible, product, onClose, onSuccess }: Shrinka
       await productApi.recordShrinkage(product.id, qty, reason);
       Alert.alert(
         'Shrinkage Logged', 
-        `Recorded ${qty} lost/damaged units for ${product.name}. Cost impact: $${(qty * (product.cost_price || 0)).toFixed(2)}`
+        `Recorded ${qty} lost/damaged units for ${product.name}. Cost impact: ${formatCurrency(qty * (product.cost_price || 0), product.currency_symbol)}`
       );
       setQuantity('');
       onSuccess();
