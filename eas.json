@@ -1,0 +1,30 @@
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api-pos-ecommerce.jmsolutions.co.tz/api",
+        "EXPO_PUBLIC_API_BASE_URL": "https://api-pos-ecommerce.jmsolutions.co.tz/api"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api-pos-ecommerce.jmsolutions.co.tz/api",
+        "EXPO_PUBLIC_API_BASE_URL": "https://api-pos-ecommerce.jmsolutions.co.tz/api"
+      }
+    }
+  }
+}
