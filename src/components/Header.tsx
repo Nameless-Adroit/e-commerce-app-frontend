@@ -1,11 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
-import { theme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { Badge } from './Badge';
+import { SettingsModal } from './SettingsModal';
 
 interface HeaderProps {
   title: string;
@@ -16,8 +17,10 @@ interface HeaderProps {
 
 export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) {
   const { user, logout } = useAuth();
+  const { theme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Dynamic top safe inset (guarantees notch & punch-hole clearance with comfortable padding)
   const topSafePadding = Math.max(
@@ -40,42 +43,88 @@ export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) 
 
   const roleInfo = getRoleLabel(user?.role);
 
+  const confirmLogout = () => {
+    Alert.alert(
+      'Confirm Sign Out',
+      'Are you sure you want to sign out of your session?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Sign Out', 
+          style: 'destructive', 
+          onPress: logout 
+        }
+      ]
+    );
+  };
+
   return (
-    <View style={[styles.wrapper, { paddingTop: topSafePadding }]}>
-      <View style={styles.container}>
-        <View style={styles.leftCol}>
-          {showBack && (
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-              <Ionicons name="chevron-back" size={20} color={theme.text} />
+    <>
+      <View 
+        style={[
+          styles.wrapper, 
+          { 
+            paddingTop: topSafePadding,
+            backgroundColor: theme.surface,
+            borderBottomColor: theme.surfaceBorder
+          }
+        ]}
+      >
+        <View style={styles.container}>
+          <View style={styles.leftCol}>
+            {showBack && (
+              <TouchableOpacity 
+                onPress={() => router.back()} 
+                style={[styles.backBtn, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]} 
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chevron-back" size={20} color={theme.text} />
+              </TouchableOpacity>
+            )}
+            <View style={styles.titleWrapper}>
+              <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>{title}</Text>
+              {subtitle ? (
+                <Text style={[styles.subtitle, { color: theme.textSecondary }]} numberOfLines={1}>{subtitle}</Text>
+              ) : user?.shop_name ? (
+                <Text style={[styles.subtitle, { color: theme.textSecondary }]} numberOfLines={1}>{user.shop_name} ({user.shop_code})</Text>
+              ) : null}
+            </View>
+          </View>
+
+          <View style={styles.rightCol}>
+            {rightAction}
+            <Badge label={roleInfo.text} variant={roleInfo.variant} />
+            
+            {/* Settings Gear Button */}
+            <TouchableOpacity 
+              onPress={() => setSettingsOpen(true)} 
+              style={[styles.iconBtn, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]} 
+              activeOpacity={0.7}
+            >
+              <Ionicons name="settings-outline" size={18} color={theme.text} />
             </TouchableOpacity>
-          )}
-          <View style={styles.titleWrapper}>
-            <Text style={styles.title} numberOfLines={1}>{title}</Text>
-            {subtitle ? (
-              <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
-            ) : user?.shop_name ? (
-              <Text style={styles.subtitle} numberOfLines={1}>{user.shop_name} ({user.shop_code})</Text>
-            ) : null}
+
+            {/* Logout Button with Confirmation */}
+            <TouchableOpacity 
+              onPress={confirmLogout} 
+              style={styles.logoutBtn} 
+              activeOpacity={0.7}
+            >
+              <Ionicons name="log-out-outline" size={18} color={theme.danger} />
+            </TouchableOpacity>
           </View>
         </View>
-
-        <View style={styles.rightCol}>
-          {rightAction}
-          <Badge label={roleInfo.text} variant={roleInfo.variant} />
-          <TouchableOpacity onPress={logout} style={styles.logoutBtn} activeOpacity={0.7}>
-            <Ionicons name="log-out-outline" size={18} color={theme.danger} />
-          </TouchableOpacity>
-        </View>
       </View>
-    </View>
+
+      {/* App Settings Modal */}
+      <SettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: theme.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.surfaceBorder,
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -87,7 +136,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 22,
+    paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 14
   },
@@ -104,18 +153,14 @@ const styles = StyleSheet.create({
   backBtn: {
     padding: 7,
     borderRadius: 10,
-    backgroundColor: theme.surfaceLight,
-    borderWidth: 1,
-    borderColor: theme.surfaceBorder
+    borderWidth: 1
   },
   title: {
-    color: theme.text,
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: -0.3
   },
   subtitle: {
-    color: theme.textSecondary,
     fontSize: 12,
     marginTop: 2,
     fontWeight: '500'
@@ -123,8 +168,13 @@ const styles = StyleSheet.create({
   rightCol: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     flexShrink: 0
+  },
+  iconBtn: {
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 1
   },
   logoutBtn: {
     padding: 8,

@@ -9,28 +9,19 @@ import {
   Platform, 
   ActivityIndicator, 
   Alert, 
-  ScrollView,
-  Modal
+  ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
-import { theme } from '../theme/colors';
-import { getApiBaseUrl, setApiBaseUrl, initApiConfig } from '../config/apiConfig';
+import { useTheme } from '../context/ThemeContext';
 
 export default function LoginScreen() {
   const { login } = useAuth();
+  const { theme } = useTheme();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [serverModalVisible, setServerModalVisible] = useState(false);
-  const [serverUrlInput, setServerUrlInput] = useState(getApiBaseUrl());
-
-  React.useEffect(() => {
-    initApiConfig().then((url: string) => {
-      setServerUrlInput(url);
-    });
-  }, []);
 
   const handleLogin = async () => {
     if (!identifier.trim() || !password) {
@@ -48,46 +39,33 @@ export default function LoginScreen() {
     }
   };
 
-  const handleQuickPersona = (user: string, pass: string) => {
-    setIdentifier(user);
-    setPassword(pass);
-  };
-
-  const handleSaveServerUrl = async () => {
-    if (serverUrlInput.trim()) {
-      await setApiBaseUrl(serverUrlInput.trim());
-      setServerModalVisible(false);
-      Alert.alert('Settings Saved', `API Base URL set to: ${serverUrlInput.trim()}`);
-    }
-  };
-
   return (
     <KeyboardAvoidingView 
-      style={styles.container} 
+      style={[styles.container, { backgroundColor: theme.background }]} 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Top Branding */}
         <View style={styles.brandContainer}>
-          <View style={styles.logoBadge}>
-            <Ionicons name="storefront" size={36} color={theme.primary} />
+          <View style={[styles.logoBadge, { backgroundColor: theme.primaryLight, borderColor: theme.primary }]}>
+            <Ionicons name="storefront" size={38} color={theme.primary} />
           </View>
-          <Text style={styles.appTitle}>Apex POS & Retail</Text>
-          <Text style={styles.appSubtitle}>Multi-Tier E-Commerce & Point of Sale System</Text>
+          <Text style={[styles.appTitle, { color: theme.text }]}>Apex POS & Retail</Text>
+          <Text style={[styles.appSubtitle, { color: theme.textSecondary }]}>Enterprise Point of Sale & Inventory Platform</Text>
         </View>
 
         {/* Login Form Card */}
-        <View style={styles.card}>
-          <Text style={styles.formTitle}>Unified Login Portal</Text>
-          <Text style={styles.formDesc}>Sign in with your role-authorized credentials</Text>
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+          <Text style={[styles.formTitle, { color: theme.text }]}>Sign In</Text>
+          <Text style={[styles.formDesc, { color: theme.textSecondary }]}>Enter your authorized staff credentials</Text>
 
           {/* Identifier Input */}
-          <Text style={styles.inputLabel}>Username or Email</Text>
-          <View style={styles.inputContainer}>
+          <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Username or Email</Text>
+          <View style={[styles.inputContainer, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
             <Ionicons name="person-outline" size={18} color={theme.textMuted} style={styles.inputIcon} />
             <TextInput
-              style={styles.input}
-              placeholder="e.g. admin_tech or superadmin"
+              style={[styles.input, { color: theme.text }]}
+              placeholder="Username or email"
               placeholderTextColor={theme.textMuted}
               value={identifier}
               onChangeText={setIdentifier}
@@ -97,11 +75,11 @@ export default function LoginScreen() {
           </View>
 
           {/* Password Input */}
-          <Text style={styles.inputLabel}>Password</Text>
-          <View style={styles.inputContainer}>
+          <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Password</Text>
+          <View style={[styles.inputContainer, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
             <Ionicons name="lock-closed-outline" size={18} color={theme.textMuted} style={styles.inputIcon} />
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: theme.text }]}
               placeholder="••••••••••••"
               placeholderTextColor={theme.textMuted}
               secureTextEntry={!showPassword}
@@ -117,9 +95,10 @@ export default function LoginScreen() {
 
           {/* Submit Button */}
           <TouchableOpacity 
-            style={[styles.loginBtn, loading && styles.btnDisabled]} 
+            style={[styles.loginBtn, { backgroundColor: theme.primary }, loading && styles.btnDisabled]} 
             onPress={handleLogin}
             disabled={loading}
+            activeOpacity={0.85}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -130,89 +109,23 @@ export default function LoginScreen() {
               </View>
             )}
           </TouchableOpacity>
-
-          {/* Quick Demo Personas */}
-          <View style={styles.personaSection}>
-            <Text style={styles.personaSectionTitle}>Quick Demo 1-Tap Login:</Text>
-            
-            <View style={styles.personaChips}>
-              <TouchableOpacity 
-                style={[styles.chip, styles.chipSuper]}
-                onPress={() => handleQuickPersona('superadmin', 'SuperAdmin123!')}
-              >
-                <Ionicons name="shield-checkmark" size={14} color="#EF4444" />
-                <Text style={styles.chipTextSuper}>Super Admin</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.chip, styles.chipAdmin]}
-                onPress={() => handleQuickPersona('admin_tech', 'Admin123!')}
-              >
-                <Ionicons name="briefcase" size={14} color="#818CF8" />
-                <Text style={styles.chipTextAdmin}>Shop Admin</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.chip, styles.chipSeller]}
-                onPress={() => handleQuickPersona('seller_alice', 'Seller123!')}
-              >
-                <Ionicons name="cart" size={14} color="#10B981" />
-                <Text style={styles.chipTextSeller}>POS Seller</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
         </View>
 
-        {/* Server Config Button */}
-        <TouchableOpacity 
-          style={styles.serverSettingsBtn}
-          onPress={() => {
-            setServerUrlInput(getApiBaseUrl());
-            setServerModalVisible(true);
-          }}
-        >
-          <Ionicons name="server-outline" size={14} color={theme.textMuted} />
-          <Text style={styles.serverSettingsText}>Server: {getApiBaseUrl()}</Text>
-        </TouchableOpacity>
+        {/* Security / Production Footer Notice */}
+        <View style={styles.footerInfo}>
+          <Ionicons name="shield-checkmark-outline" size={14} color={theme.textMuted} />
+          <Text style={[styles.footerText, { color: theme.textMuted }]}>
+            Connected to Secure Encrypted Server (v1.1.0)
+          </Text>
+        </View>
       </ScrollView>
-
-      {/* Server URL Config Modal */}
-      <Modal visible={serverModalVisible} transparent animationType="fade" onRequestClose={() => setServerModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Backend API Host Config</Text>
-            <Text style={styles.modalDesc}>
-              Set the backend API host. Use your computer's local LAN IP (e.g., http://192.168.0.13:3000) when connecting from a physical mobile phone.
-            </Text>
-
-            <TextInput
-              style={styles.modalInput}
-              value={serverUrlInput}
-              onChangeText={setServerUrlInput}
-              placeholder="http://192.168.0.13:3000"
-              placeholderTextColor={theme.textMuted}
-              autoCapitalize="none"
-            />
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setServerModalVisible(false)} style={styles.modalCancelBtn}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleSaveServerUrl} style={styles.modalSaveBtn}>
-                <Text style={styles.modalSaveText}>Save URL</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: theme.background
+    flex: 1
   },
   scrollContent: {
     flexGrow: 1,
@@ -224,56 +137,48 @@ const styles = StyleSheet.create({
     marginBottom: 28
   },
   logoBadge: {
-    width: 68,
-    height: 68,
-    borderRadius: 20,
-    backgroundColor: 'rgba(99, 102, 241, 0.12)',
+    width: 72,
+    height: 72,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 14
   },
   appTitle: {
-    color: theme.text,
     fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.5
   },
   appSubtitle: {
-    color: theme.textSecondary,
     fontSize: 13,
     marginTop: 4,
     textAlign: 'center'
   },
   card: {
-    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: theme.surfaceBorder,
-    borderRadius: theme.radius.lg,
-    padding: 24,
+    borderRadius: 20,
+    padding: 26,
     width: '100%',
     maxWidth: 440,
     alignSelf: 'center',
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 4
   },
   formTitle: {
-    color: theme.text,
-    fontSize: 20,
-    fontWeight: '700'
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3
   },
   formDesc: {
-    color: theme.textSecondary,
     fontSize: 13,
     marginTop: 4,
-    marginBottom: 20
+    marginBottom: 22
   },
   inputLabel: {
-    color: theme.textSecondary,
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 6
@@ -281,28 +186,25 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.inputBg,
     borderWidth: 1,
-    borderColor: theme.inputBorder,
-    borderRadius: theme.radius.md,
+    borderRadius: 12,
     marginBottom: 16,
-    paddingHorizontal: 12
+    paddingHorizontal: 12,
+    height: 50
   },
   inputIcon: {
     marginRight: 8
   },
   input: {
     flex: 1,
-    color: theme.text,
-    paddingVertical: 12,
-    fontSize: 14
+    paddingVertical: 0,
+    fontSize: 15
   },
   eyeBtn: {
     padding: 6
   },
   loginBtn: {
-    backgroundColor: theme.primary,
-    borderRadius: theme.radius.md,
+    borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -317,139 +219,19 @@ const styles = StyleSheet.create({
     gap: 8
   },
   loginBtnText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 15,
     fontWeight: '700'
   },
-  personaSection: {
-    marginTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: theme.surfaceBorder,
-    paddingTop: 16
-  },
-  personaSectionTitle: {
-    color: theme.textSecondary,
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 10,
-    textAlign: 'center'
-  },
-  personaChips: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    flexWrap: 'wrap'
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: theme.radius.full,
-    borderWidth: 1
-  },
-  chipSuper: {
-    backgroundColor: 'rgba(220, 38, 38, 0.08)',
-    borderColor: 'rgba(220, 38, 38, 0.25)'
-  },
-  chipTextSuper: {
-    color: '#DC2626',
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  chipAdmin: {
-    backgroundColor: 'rgba(79, 70, 229, 0.08)',
-    borderColor: 'rgba(79, 70, 229, 0.25)'
-  },
-  chipTextAdmin: {
-    color: '#4F46E5',
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  chipSeller: {
-    backgroundColor: 'rgba(5, 150, 105, 0.08)',
-    borderColor: 'rgba(5, 150, 105, 0.25)'
-  },
-  chipTextSeller: {
-    color: '#059669',
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  serverSettingsBtn: {
+  footerInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 20
+    marginTop: 28
   },
-  serverSettingsText: {
-    color: theme.textMuted,
-    fontSize: 12
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24
-  },
-  modalCard: {
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.surfaceBorder,
-    borderRadius: theme.radius.lg,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400
-  },
-  modalTitle: {
-    color: theme.text,
-    fontSize: 18,
-    fontWeight: '700'
-  },
-  modalDesc: {
-    color: theme.textSecondary,
-    fontSize: 13,
-    marginTop: 6,
-    marginBottom: 16,
-    lineHeight: 18
-  },
-  modalInput: {
-    backgroundColor: theme.inputBg,
-    borderWidth: 1,
-    borderColor: theme.inputBorder,
-    borderRadius: theme.radius.md,
-    color: theme.text,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    marginBottom: 16
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 10
-  },
-  modalCancelBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.surfaceLight,
-    alignItems: 'center'
-  },
-  modalCancelText: {
-    color: theme.textSecondary,
-    fontWeight: '600'
-  },
-  modalSaveBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.primary,
-    alignItems: 'center'
-  },
-  modalSaveText: {
-    color: '#fff',
-    fontWeight: '700'
+  footerText: {
+    fontSize: 12,
+    fontWeight: '500'
   }
 });

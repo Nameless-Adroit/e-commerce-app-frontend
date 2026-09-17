@@ -1,9 +1,14 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../../theme/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function AdminLayout() {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 12);
+
   return (
     <Tabs
       screenOptions={{
@@ -14,8 +19,8 @@ export default function AdminLayout() {
           backgroundColor: theme.surface,
           borderTopColor: theme.surfaceBorder,
           borderTopWidth: 1,
-          height: 62,
-          paddingBottom: 8,
+          height: 56 + bottomInset,
+          paddingBottom: bottomInset,
           paddingTop: 6,
         },
         tabBarLabelStyle: {

@@ -139,11 +139,11 @@ export default function SellerCounterScreen() {
         </TouchableOpacity>
 
         {/* Manual Product ID Lookup / Filter Input */}
-        <View style={styles.searchBox}>
-          <Ionicons name="barcode-outline" size={20} color={theme.textMuted} />
+        <View style={[styles.searchBox, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+          <Ionicons name="search-outline" size={20} color={theme.textMuted} />
           <TextInput
-            style={styles.searchInput}
-            placeholder="Type Product ID or Name (e.g. PRD-SHP01-...)"
+            style={[styles.searchInput, { color: theme.text }]}
+            placeholder="Search by product name or ID..."
             placeholderTextColor={theme.textMuted}
             value={directSearchId}
             onChangeText={setDirectSearchId}
@@ -447,14 +447,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
     borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 48,
+    paddingHorizontal: 14,
+    height: 50,
     marginBottom: 14,
     gap: 10,
     ...theme.shadow
   },
   searchInput: {
     flex: 1,
+    height: 48,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
     fontSize: 14,
     color: theme.text
   },
