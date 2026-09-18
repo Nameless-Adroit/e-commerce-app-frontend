@@ -131,7 +131,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
             <View style={[styles.infoCard, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]}>
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>App Version:</Text>
-                <Text style={[styles.infoValue, { color: theme.text }]}>v1.1.1 (Build 3)</Text>
+                <Text style={[styles.infoValue, { color: theme.text }]}>v1.1.0 (OTA Patch 1)</Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Build Type:</Text>
