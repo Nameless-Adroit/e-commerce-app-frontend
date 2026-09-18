@@ -10,7 +10,8 @@ import {
   Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme/colors';
+import { useTheme, useStyles } from '../context/ThemeContext';
+import { AppTheme } from '../theme/colors';
 import { analyticsApi } from '../services/api';
 import { DailyReconciliation } from '../types';
 import { formatCurrency } from '../utils/currency';
@@ -22,6 +23,8 @@ interface CloseBusinessModalProps {
 }
 
 export function CloseBusinessModal({ visible, onClose, onSuccessClose }: CloseBusinessModalProps) {
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [loading, setLoading] = useState(false);
   const [closing, setClosing] = useState(false);
   const [data, setData] = useState<DailyReconciliation | null>(null);
@@ -225,7 +228,7 @@ export function CloseBusinessModal({ visible, onClose, onSuccessClose }: CloseBu
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.65)',

@@ -16,7 +16,8 @@ import { useLocalSearchParams } from 'expo-router';
 import { Header } from '../../components/Header';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { posApi } from '../../services/api';
-import { theme } from '../../theme/colors';
+import { useTheme, useStyles } from '../../context/ThemeContext';
+import { AppTheme } from '../../theme/colors';
 import { Transaction, TransactionSummary } from '../../types';
 import { formatCurrency } from '../../utils/currency';
 
@@ -46,6 +47,8 @@ function formatDisplayDate(dateStr: string): string {
 }
 
 export default function AdminTransactions() {
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const params = useLocalSearchParams<{ date?: string }>();
   const todayStr = useMemo(() => formatDateToISO(new Date()), []);
   
@@ -493,7 +496,7 @@ export default function AdminTransactions() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background

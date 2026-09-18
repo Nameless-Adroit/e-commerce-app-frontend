@@ -111,13 +111,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Security / Production Footer Notice */}
-        <View style={styles.footerInfo}>
-          <Ionicons name="shield-checkmark-outline" size={14} color={theme.textMuted} />
-          <Text style={[styles.footerText, { color: theme.textMuted }]}>
-            Connected to Secure Encrypted Server (v1.1.0)
-          </Text>
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

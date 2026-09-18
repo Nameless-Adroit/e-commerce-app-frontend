@@ -17,12 +17,15 @@ import { ScannerModal } from '../../components/ScannerModal';
 import { ProductDetailModal } from '../../components/ProductDetailModal';
 import { useCart } from '../../context/CartContext';
 import { posApi, productApi, analyticsApi } from '../../services/api';
-import { theme } from '../../theme/colors';
+import { useTheme, useStyles } from '../../context/ThemeContext';
+import { AppTheme } from '../../theme/colors';
 import { Product, TopProduct } from '../../types';
 import { formatCurrency } from '../../utils/currency';
 
 export default function SellerCounterScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const { addItem, items, totalUnits, totalAmount } = useCart();
 
   const [scannerVisible, setScannerVisible] = useState(false);
@@ -115,7 +118,7 @@ export default function SellerCounterScreen() {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, totalUnits > 0 && { paddingBottom: 90 }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
@@ -276,11 +279,16 @@ export default function SellerCounterScreen() {
                   onPress={() => setSelectedDetailProduct(p)}
                   activeOpacity={0.75}
                 >
-                  {inCartCount > 0 && (
-                    <View style={styles.inCartBadge}>
-                      <Text style={styles.inCartBadgeText}>{inCartCount} in cart</Text>
-                    </View>
-                  )}
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.cardCategoryText} numberOfLines={1}>
+                      {p.category || 'ITEM'}
+                    </Text>
+                    {inCartCount > 0 && (
+                      <View style={styles.inCartBadge}>
+                        <Text style={styles.inCartBadgeText}>{inCartCount} in cart</Text>
+                      </View>
+                    )}
+                  </View>
 
                   <Text style={styles.productName} numberOfLines={2}>
                     {p.name}
@@ -370,7 +378,7 @@ export default function SellerCounterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background
@@ -473,10 +481,10 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   topSellerCard: {
-    backgroundColor: '#FFFBEB',
+    backgroundColor: theme.mode === 'dark' ? '#1E1B13' : '#FFFBEB',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: theme.mode === 'dark' ? '#78350F' : '#FDE68A',
     padding: 14,
     marginBottom: 14
   },
@@ -494,12 +502,12 @@ const styles = StyleSheet.create({
   flameBadgeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#B45309'
+    color: theme.mode === 'dark' ? '#F59E0B' : '#B45309'
   },
   unitsSoldBadge: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#92400E'
+    color: theme.mode === 'dark' ? '#FBBF24' : '#92400E'
   },
   topSellerBody: {
     flexDirection: 'row',
@@ -513,11 +521,11 @@ const styles = StyleSheet.create({
   topSellerName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#78350F'
+    color: theme.mode === 'dark' ? '#FEF3C7' : '#78350F'
   },
   topSellerId: {
     fontSize: 11,
-    color: '#92400E',
+    color: theme.mode === 'dark' ? '#FDE68A' : '#92400E',
     marginTop: 2
   },
   topSellerMetrics: {
@@ -604,11 +612,24 @@ const styles = StyleSheet.create({
   productCardOOS: {
     opacity: 0.5
   },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+    minHeight: 18
+  },
+  cardCategoryText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: theme.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    flex: 1,
+    marginRight: 4
+  },
   inCartBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+    backgroundColor: theme.isDark ? 'rgba(99, 102, 241, 0.25)' : 'rgba(79, 70, 229, 0.12)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6
@@ -616,14 +637,14 @@ const styles = StyleSheet.create({
   inCartBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: theme.primary
+    color: theme.isDark ? '#A5B4FC' : theme.primary
   },
   productName: {
     fontSize: 13,
     fontWeight: '700',
     color: theme.text,
     marginBottom: 4,
-    marginTop: 2
+    lineHeight: 18
   },
   productId: {
     fontSize: 10,
@@ -669,14 +690,20 @@ const styles = StyleSheet.create({
     zIndex: 99
   },
   floatingCartBar: {
-    backgroundColor: theme.text,
-    borderRadius: 14,
+    backgroundColor: theme.isDark ? '#1E293B' : '#0F172A',
+    borderWidth: 1.5,
+    borderColor: theme.isDark ? '#3B82F6' : '#334155',
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    ...theme.shadow
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8
   },
   floatingCartLeft: {
     flexDirection: 'row',
@@ -698,7 +725,7 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   floatingCartTotal: {
-    color: '#ffffff',
+    color: '#38BDF8',
     fontSize: 15,
     fontWeight: '700'
   },
@@ -710,6 +737,6 @@ const styles = StyleSheet.create({
   floatingCartActionText: {
     color: '#ffffff',
     fontSize: 13,
-    fontWeight: '600'
+    fontWeight: '700'
   }
 });

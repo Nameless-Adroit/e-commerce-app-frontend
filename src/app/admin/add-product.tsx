@@ -14,10 +14,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Header } from '../../components/Header';
 import { productApi } from '../../services/api';
-import { theme } from '../../theme/colors';
+import { useTheme, useStyles } from '../../context/ThemeContext';
+import { AppTheme } from '../../theme/colors';
 
 export default function AddProductScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [productId, setProductId] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -237,7 +240,7 @@ export default function AddProductScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background

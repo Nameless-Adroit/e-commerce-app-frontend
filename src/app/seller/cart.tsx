@@ -17,12 +17,15 @@ import { Header } from '../../components/Header';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { useCart } from '../../context/CartContext';
 import { posApi } from '../../services/api';
-import { theme } from '../../theme/colors';
+import { useTheme, useStyles } from '../../context/ThemeContext';
+import { AppTheme } from '../../theme/colors';
 import { Transaction, CheckoutTransaction } from '../../types';
 import { formatCurrency } from '../../utils/currency';
 
 export default function SellerCartScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const { items, updateQuantity, updateItemPrice, removeItem, clearCart, totalAmount, totalUnits } = useCart();
 
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'mobile_money'>('cash');
@@ -545,7 +548,7 @@ function toReceiptTransaction(transaction: CheckoutTransaction): Transaction {
   };
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background

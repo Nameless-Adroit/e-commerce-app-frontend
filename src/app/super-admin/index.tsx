@@ -13,13 +13,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Header } from '../../components/Header';
 import { analyticsApi, shopApi } from '../../services/api';
-import { theme } from '../../theme/colors';
+import { useTheme, useStyles } from '../../context/ThemeContext';
+import { AppTheme } from '../../theme/colors';
 import { GlobalSummary, DailyReport, Shop } from '../../types';
 import { formatCurrency } from '../../utils/currency';
 
 export default function SuperAdminDashboard() {
-
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [globalSummary, setGlobalSummary] = useState<GlobalSummary | null>(null);
@@ -201,7 +203,7 @@ export default function SuperAdminDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background

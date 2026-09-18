@@ -12,7 +12,8 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme/colors';
+import { useTheme, useStyles } from '../context/ThemeContext';
+import { AppTheme } from '../theme/colors';
 import { Product } from '../types';
 import { productApi } from '../services/api';
 
@@ -39,6 +40,8 @@ export function ReturnRestockModal({
   initialProduct,
   products = [],
 }: ReturnRestockModalProps) {
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
   const [reason, setReason] = useState<string>(COMMON_REASONS[0]);
@@ -289,7 +292,7 @@ export function ReturnRestockModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.65)',

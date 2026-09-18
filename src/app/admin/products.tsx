@@ -19,15 +19,17 @@ import { RestockModal } from '../../components/RestockModal';
 import { PriceModal } from '../../components/PriceModal';
 import { ShrinkageModal } from '../../components/ShrinkageModal';
 import { productApi } from '../../services/api';
-import { theme } from '../../theme/colors';
+import { useTheme, useStyles } from '../../context/ThemeContext';
+import { AppTheme } from '../../theme/colors';
 import { Product } from '../../types';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { formatCurrency } from '../../utils/currency';
 
 export default function AdminProducts() {
-
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -249,7 +251,7 @@ export default function AdminProducts() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background

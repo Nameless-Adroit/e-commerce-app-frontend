@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { theme } from '../theme/colors';
+import { useTheme, useStyles } from '../context/ThemeContext';
+import { AppTheme } from '../theme/colors';
 import { Product } from '../types';
 import { productApi } from '../services/api';
 import { formatCurrency } from '../utils/currency';
@@ -13,6 +14,8 @@ interface PriceModalProps {
 }
 
 export function PriceModal({ visible, product, onClose, onSuccess }: PriceModalProps) {
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [price, setPrice] = useState('');
   const [costPrice, setCostPrice] = useState('');
   const [reorderLevel, setReorderLevel] = useState('');
@@ -113,7 +116,7 @@ export function PriceModal({ visible, product, onClose, onSuccess }: PriceModalP
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.5)',

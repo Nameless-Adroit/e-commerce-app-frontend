@@ -13,11 +13,14 @@ import { Header } from '../../components/Header';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { CloseBusinessModal } from '../../components/CloseBusinessModal';
 import { posApi } from '../../services/api';
-import { theme } from '../../theme/colors';
+import { useTheme, useStyles } from '../../context/ThemeContext';
+import { AppTheme } from '../../theme/colors';
 import { Transaction } from '../../types';
 import { formatCurrency } from '../../utils/currency';
 
 export default function SellerHistory() {
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -133,7 +136,7 @@ export default function SellerHistory() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background

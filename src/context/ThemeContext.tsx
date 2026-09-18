@@ -1,8 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { useColorScheme, StyleSheet, Platform, UIManager, LayoutAnimation } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import { lightTheme, darkTheme, AppTheme } from '../theme/colors';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -39,6 +43,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setMode = async (newMode: ThemeMode) => {
+    LayoutAnimation.configureNext({
+      duration: 350,
+      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+      update: { type: LayoutAnimation.Types.easeInEaseOut },
+      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+    });
     setModeState(newMode);
     try {
       await AsyncStorage.setItem(STORAGE_KEY, newMode);
@@ -60,4 +70,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export function useTheme() {
   return useContext(ThemeContext);
+}
+
+export function useStyles<T extends StyleSheet.NamedStyles<T> | StyleSheet.NamedStyles<any>>(
+  creator: (theme: AppTheme) => T
+): T {
+  const { theme } = useTheme();
+  return useMemo(() => creator(theme), [theme]);
 }

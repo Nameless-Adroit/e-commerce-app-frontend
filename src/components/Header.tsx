@@ -31,11 +31,11 @@ export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) 
   const getRoleLabel = (role?: string) => {
     switch (role) {
       case 'super_admin':
-        return { text: 'SUPER ADMIN', variant: 'danger' as const };
+        return { text: 'SUPER', variant: 'danger' as const };
       case 'admin':
-        return { text: 'SHOP ADMIN', variant: 'primary' as const };
+        return { text: 'ADMIN', variant: 'primary' as const };
       case 'seller':
-        return { text: 'POS SELLER', variant: 'success' as const };
+        return { text: 'SELLER', variant: 'success' as const };
       default:
         return { text: 'USER', variant: 'neutral' as const };
     }
@@ -93,7 +93,7 @@ export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) 
 
           <View style={styles.rightCol}>
             {rightAction}
-            <Badge label={roleInfo.text} variant={roleInfo.variant} />
+            {!rightAction && <Badge label={roleInfo.text} variant={roleInfo.variant} />}
             
             {/* Settings Gear Button */}
             <TouchableOpacity 

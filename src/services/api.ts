@@ -69,7 +69,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       : null;
 
     if (!response.ok) {
-      const errorMsg = json?.message || `Request failed with status ${response.status}`;
+      if (response.status >= 500) {
+        throw new Error('Store service is temporarily unavailable. Please try again in a few moments.');
+      }
+      const errorMsg = json?.message || 'The requested operation could not be completed. Please try again.';
       const err = new Error(errorMsg);
       (err as any).statusCode = response.status;
       (err as any).response = json;
@@ -77,13 +80,22 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     }
 
     if (!json) {
-      throw new Error('The backend returned an invalid response. Expected JSON.');
+      throw new Error('Unable to process response from store server. Please try again.');
     }
 
     return json as T;
   } catch (err: any) {
-    if (err.message === 'Network request failed' || err.name === 'TypeError') {
-      throw new Error(`Unable to connect to backend server at ${baseUrl}. Ensure backend is running.`);
+    const rawMsg = String(err?.message || '');
+    const isNetworkIssue =
+      rawMsg.includes('Network request failed') ||
+      rawMsg.includes('Failed to fetch') ||
+      rawMsg.includes('NetworkError') ||
+      rawMsg.includes('timeout') ||
+      rawMsg.includes('aborted') ||
+      err.name === 'TypeError';
+
+    if (isNetworkIssue) {
+      throw new Error('No internet connection. Please check your network connection and try again.');
     }
     throw err;
   }

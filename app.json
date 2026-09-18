@@ -2,7 +2,7 @@
   "expo": {
     "name": "e-commerce-app",
     "slug": "e-commerce-app",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "ecommerceapp",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.jmsolutions.ecommerceapp",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

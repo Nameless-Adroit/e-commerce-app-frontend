@@ -2,10 +2,13 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme/colors';
+import { useTheme, useStyles } from '../context/ThemeContext';
+import { AppTheme } from '../theme/colors';
 
 export default function NotFoundScreen() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
 
   return (
     <>
@@ -70,7 +73,7 @@ export default function NotFoundScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: theme.background

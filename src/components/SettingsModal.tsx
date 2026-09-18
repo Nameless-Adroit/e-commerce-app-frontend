@@ -131,24 +131,11 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
             <View style={[styles.infoCard, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]}>
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>App Version:</Text>
-                <Text style={[styles.infoValue, { color: theme.text }]}>v1.1.0 (Build 2)</Text>
+                <Text style={[styles.infoValue, { color: theme.text }]}>v1.1.1 (Build 3)</Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Build Type:</Text>
                 <Text style={[styles.infoValue, { color: theme.text }]}>Standalone Release APK</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Server Status:</Text>
-                <View style={styles.statusOnline}>
-                  <View style={styles.statusDot} />
-                  <Text style={[styles.statusText, { color: theme.accent }]}>Live / Production</Text>
-                </View>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Backend URL:</Text>
-                <Text style={[styles.infoValueSmall, { color: theme.textSecondary }]} numberOfLines={1}>
-                  {getApiBaseUrl()}
-                </Text>
               </View>
             </View>
 
@@ -256,15 +243,19 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'flex-start',
+    gap: 12
   },
   infoLabel: {
     fontSize: 13,
-    fontWeight: '500'
+    fontWeight: '500',
+    flexShrink: 0
   },
   infoValue: {
     fontSize: 13,
-    fontWeight: '600'
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'right'
   },
   infoValueSmall: {
     fontSize: 11,

@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
-import { theme } from '../theme/colors';
+import { useTheme, useStyles } from '../context/ThemeContext';
+import { AppTheme } from '../theme/colors';
 
 interface ScannerModalProps {
   visible: boolean;
@@ -22,6 +23,8 @@ interface ScannerModalProps {
 }
 
 export function ScannerModal({ visible, onClose, onScan, sampleIds = [] }: ScannerModalProps) {
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [manualId, setManualId] = useState('');
   const [torchOn, setTorchOn] = useState(false);
   const [scanned, setScanned] = useState(false);
@@ -233,7 +236,7 @@ export function ScannerModal({ visible, onClose, onScan, sampleIds = [] }: Scann
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.65)',

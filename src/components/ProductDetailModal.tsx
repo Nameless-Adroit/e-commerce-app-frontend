@@ -9,7 +9,8 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme/colors';
+import { useTheme, useStyles } from '../context/ThemeContext';
+import { AppTheme } from '../theme/colors';
 import { Product } from '../types';
 import { formatCurrency } from '../utils/currency';
 
@@ -28,6 +29,8 @@ export function ProductDetailModal({
   onAddToCart,
   inCartQuantity = 0
 }: ProductDetailModalProps) {
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
@@ -178,7 +181,7 @@ export function ProductDetailModal({
                     activeOpacity={0.85}
                   >
                     <Ionicons name="cart" size={18} color="#ffffff" />
-                    <Text style={styles.addBtnText}>
+                    <Text style={styles.addBtnText} numberOfLines={1} adjustsFontSizeToFit>
                       Add to Cart • {formatCurrency(quantity * product.price, product.currency_symbol)}
                     </Text>
                   </TouchableOpacity>
@@ -197,7 +200,7 @@ export function ProductDetailModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.55)',
@@ -418,16 +421,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     backgroundColor: theme.primary,
     paddingVertical: 13,
+    paddingHorizontal: 10,
     borderRadius: 10,
     ...theme.shadow
   },
   addBtnText: {
     color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700'
+    fontSize: 13,
+    fontWeight: '700',
+    flexShrink: 1
   },
   outOfStockBanner: {
     flexDirection: 'row',

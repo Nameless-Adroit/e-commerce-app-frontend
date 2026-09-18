@@ -11,15 +11,18 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Header } from '../../components/Header';
-import { useAuth } from '../../context/AuthContext';
 import { analyticsApi, productApi } from '../../services/api';
-import { theme } from '../../theme/colors';
+import { useAuth } from '../../context/AuthContext';
+import { useTheme, useStyles } from '../../context/ThemeContext';
+import { AppTheme } from '../../theme/colors';
 import { DailyReport, Product } from '../../types';
 import { formatCurrency } from '../../utils/currency';
 
 export default function AdminDashboard() {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dailyReport, setDailyReport] = useState<DailyReport | null>(null);
@@ -204,7 +207,7 @@ export default function AdminDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background

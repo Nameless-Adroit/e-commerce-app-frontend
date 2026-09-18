@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { theme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 interface BadgeProps {
   label: string;
@@ -9,7 +9,25 @@ interface BadgeProps {
 }
 
 export function Badge({ label, variant = 'primary', size = 'sm' }: BadgeProps) {
+  const { isDark } = useTheme();
+
   const getColors = () => {
+    if (isDark) {
+      switch (variant) {
+        case 'success':
+          return { bg: 'rgba(52, 211, 153, 0.15)', text: '#34D399', border: 'rgba(52, 211, 153, 0.3)' };
+        case 'warning':
+          return { bg: 'rgba(251, 191, 36, 0.15)', text: '#FBBF24', border: 'rgba(251, 191, 36, 0.3)' };
+        case 'danger':
+          return { bg: 'rgba(248, 113, 113, 0.15)', text: '#F87171', border: 'rgba(248, 113, 113, 0.3)' };
+        case 'neutral':
+          return { bg: 'rgba(148, 163, 184, 0.15)', text: '#94A3B8', border: 'rgba(148, 163, 184, 0.3)' };
+        case 'primary':
+        default:
+          return { bg: 'rgba(129, 140, 248, 0.15)', text: '#818CF8', border: 'rgba(129, 140, 248, 0.3)' };
+      }
+    }
+
     switch (variant) {
       case 'success':
         return { bg: 'rgba(5, 150, 105, 0.1)', text: '#059669', border: 'rgba(5, 150, 105, 0.25)' };
@@ -47,7 +65,7 @@ export function Badge({ label, variant = 'primary', size = 'sm' }: BadgeProps) {
 const styles = StyleSheet.create({
   badge: {
     borderWidth: 1,
-    borderRadius: theme.radius.full,
+    borderRadius: 9999,
     alignSelf: 'flex-start',
     justifyContent: 'center',
     alignItems: 'center'

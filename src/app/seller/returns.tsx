@@ -14,7 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Header } from '../../components/Header';
 import { ScannerModal } from '../../components/ScannerModal';
 import { productApi, posApi } from '../../services/api';
-import { theme } from '../../theme/colors';
+import { useTheme, useStyles } from '../../context/ThemeContext';
+import { AppTheme } from '../../theme/colors';
 import { Product } from '../../types';
 
 const COMMON_REASONS = [
@@ -26,6 +27,8 @@ const COMMON_REASONS = [
 ];
 
 export default function SellerReturnsScreen() {
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -360,7 +363,7 @@ export default function SellerReturnsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background

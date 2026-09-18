@@ -2,6 +2,7 @@ export type ThemeModeType = 'light' | 'dark';
 
 export interface AppTheme {
   mode: ThemeModeType;
+  isDark: boolean;
   background: string;
   surface: string;
   surfaceLight: string;
@@ -38,6 +39,7 @@ export interface AppTheme {
 
 export const lightTheme: AppTheme = {
   mode: 'light',
+  isDark: false,
   background: '#F8FAFC',        // Slate-50: Crisp bright background
   surface: '#FFFFFF',           // Pure white cards & modals
   surfaceLight: '#F1F5F9',      // Slate-100: Soft nested containers & chips
@@ -80,6 +82,7 @@ export const lightTheme: AppTheme = {
 
 export const darkTheme: AppTheme = {
   mode: 'dark',
+  isDark: true,
   background: '#0B0F19',        // Deepest dark slate
   surface: '#151C2C',           // Elevated dark card surface
   surfaceLight: '#1E293B',      // Slate-800: Soft nested containers & chips

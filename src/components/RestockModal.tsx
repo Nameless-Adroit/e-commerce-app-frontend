@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { theme } from '../theme/colors';
+import { useTheme, useStyles } from '../context/ThemeContext';
+import { AppTheme } from '../theme/colors';
 import { Product } from '../types';
 import { productApi } from '../services/api';
 
@@ -12,6 +13,8 @@ interface RestockModalProps {
 }
 
 export function RestockModal({ visible, product, onClose, onSuccess }: RestockModalProps) {
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState('Supplier shipment restock');
   const [loading, setLoading] = useState(false);
@@ -85,7 +88,7 @@ export function RestockModal({ visible, product, onClose, onSuccess }: RestockMo
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.5)',

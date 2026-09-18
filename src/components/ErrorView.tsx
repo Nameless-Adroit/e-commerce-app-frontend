@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme/colors';
+import { useTheme, useStyles } from '../context/ThemeContext';
+import { AppTheme } from '../theme/colors';
 
 export interface ErrorViewProps {
   title?: string;
@@ -21,6 +22,8 @@ export function ErrorView({
   variant = 'general'
 }: ErrorViewProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
 
   const getVariantConfig = () => {
     switch (variant) {
@@ -28,7 +31,7 @@ export function ErrorView({
         return {
           icon: 'wifi-outline' as const,
           color: theme.warning,
-          bgColor: 'rgba(217, 119, 6, 0.1)',
+          bgColor: 'rgba(217, 119, 6, 0.15)',
           defaultTitle: 'Connection Error',
           defaultMessage: 'Unable to reach the POS server. Please check your internet connection or verify the backend service is active.'
         };
@@ -36,7 +39,7 @@ export function ErrorView({
         return {
           icon: 'lock-closed-outline' as const,
           color: theme.danger,
-          bgColor: 'rgba(220, 38, 38, 0.1)',
+          bgColor: 'rgba(220, 38, 38, 0.15)',
           defaultTitle: 'Access Restricted',
           defaultMessage: 'You do not have permission to access this resource or your session has expired.'
         };
@@ -52,7 +55,7 @@ export function ErrorView({
         return {
           icon: 'warning-outline' as const,
           color: theme.danger,
-          bgColor: 'rgba(220, 38, 38, 0.1)',
+          bgColor: 'rgba(220, 38, 38, 0.15)',
           defaultTitle: 'Something Went Wrong',
           defaultMessage: 'An unexpected error occurred while processing your request. Please try again.'
         };
@@ -129,7 +132,7 @@ export function ErrorView({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: theme.background

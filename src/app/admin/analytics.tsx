@@ -12,13 +12,16 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Header } from '../../components/Header';
 import { analyticsApi } from '../../services/api';
-import { theme } from '../../theme/colors';
+import { useTheme, useStyles } from '../../context/ThemeContext';
+import { AppTheme } from '../../theme/colors';
 import { ProductSoldReportItem, ProductsSoldReportResponse } from '../../types';
 import { formatCurrency } from '../../utils/currency';
 
 type TimeFilter = 'TODAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'ALL_TIME';
 
 export default function AdminAnalytics() {
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('THIS_MONTH');
   const [reportData, setReportData] = useState<ProductsSoldReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -337,7 +340,7 @@ export default function AdminAnalytics() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background

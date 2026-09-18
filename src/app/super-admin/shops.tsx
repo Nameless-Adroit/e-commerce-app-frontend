@@ -13,11 +13,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Header } from '../../components/Header';
 import { shopApi } from '../../services/api';
-import { theme } from '../../theme/colors';
+import { useTheme, useStyles } from '../../context/ThemeContext';
+import { AppTheme } from '../../theme/colors';
 import { Shop } from '../../types';
 import { SUPPORTED_CURRENCIES } from '../../utils/currency';
 
 export default function SuperAdminShops() {
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -234,7 +237,7 @@ export default function SuperAdminShops() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background

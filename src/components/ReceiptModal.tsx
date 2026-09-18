@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme/colors';
+import { useTheme, useStyles } from '../context/ThemeContext';
+import { AppTheme } from '../theme/colors';
 import { Transaction } from '../types';
 import { formatCurrency } from '../utils/currency';
 
@@ -13,6 +14,8 @@ interface ReceiptModalProps {
 }
 
 export function ReceiptModal({ visible, transaction, onClose, title = 'Official Sales Receipt' }: ReceiptModalProps) {
+  const { theme } = useTheme();
+  const styles = useStyles(createStyles);
   if (!transaction) return null;
 
   return (
@@ -68,8 +71,12 @@ export function ReceiptModal({ visible, transaction, onClose, title = 'Official 
           )}
 
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total Paid ({transaction.payment_method?.toUpperCase()})</Text>
-            <Text style={styles.totalValue}>{formatCurrency(transaction.total_amount)}</Text>
+            <Text style={styles.totalLabel} numberOfLines={2}>
+              Total Paid ({transaction.payment_method?.toUpperCase()})
+            </Text>
+            <Text style={styles.totalValue} numberOfLines={1} adjustsFontSizeToFit>
+              {formatCurrency(transaction.total_amount)}
+            </Text>
           </View>
 
           <View style={styles.acidBadge}>
@@ -86,7 +93,7 @@ export function ReceiptModal({ visible, transaction, onClose, title = 'Official 
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
@@ -207,19 +214,22 @@ const styles = StyleSheet.create({
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'baseline',
     width: '100%',
-    marginVertical: 6
+    marginVertical: 8,
+    gap: 8
   },
   totalLabel: {
     color: theme.textSecondary,
-    fontSize: 15,
-    fontWeight: '600'
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1
   },
   totalValue: {
     color: theme.accent,
-    fontSize: 22,
-    fontWeight: '700'
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'right'
   },
   acidBadge: {
     flexDirection: 'row',
