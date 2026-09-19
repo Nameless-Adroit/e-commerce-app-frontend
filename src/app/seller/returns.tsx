@@ -18,6 +18,9 @@ import { useTheme, useStyles } from '../../context/ThemeContext';
 import { AppTheme } from '../../theme/colors';
 import { Product } from '../../types';
 
+import { useAuth } from '../../context/AuthContext';
+import { formatCurrency } from '../../utils/currency';
+
 const COMMON_REASONS = [
   'Customer Return - Unopened Item',
   'Customer Exchange - Size / Variation',
@@ -28,6 +31,7 @@ const COMMON_REASONS = [
 
 export default function SellerReturnsScreen() {
   const { theme } = useTheme();
+  const { currencySymbol } = useAuth();
   const styles = useStyles(createStyles);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +41,7 @@ export default function SellerReturnsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
+  const [originalTxnId, setOriginalTxnId] = useState('');
   const [selectedReason, setSelectedReason] = useState<string>(COMMON_REASONS[0]);
   const [customReason, setCustomReason] = useState('');
   const [isDefective, setIsDefective] = useState(false);
@@ -107,34 +112,34 @@ export default function SellerReturnsScreen() {
 
     setSubmitting(true);
     try {
-      if (isDefective) {
-        // Record as defective shrinkage so it doesn't inflate sellable stock
-        await productApi.recordShrinkage(
-          selectedProduct.id,
-          quantity,
-          `[DAMAGED/DEFECTIVE RETURN] ${finalReason}`
-        );
-        Alert.alert(
-          'Defective Return Logged',
-          `${quantity} unit(s) of ${selectedProduct.name} logged as damaged inventory audit.`
-        );
-      } else {
-        // Return to shelf inventory
-        await productApi.restock(
-          selectedProduct.id,
-          quantity,
-          `[CUSTOMER RETURN] ${finalReason}`,
-          'return'
-        );
-        Alert.alert(
-          'Return Restocked',
-          `Successfully restocked ${quantity} unit(s) of ${selectedProduct.name} back to shelf stock.`
-        );
-      }
+      const res = await posApi.processReturn({
+        original_transaction_id: originalTxnId.trim() || undefined,
+        items: [
+          {
+            productId: selectedProduct.id,
+            quantity,
+            unitPrice: Number(selectedProduct.price)
+          }
+        ],
+        reason: finalReason,
+        is_defective: isDefective
+      });
+
+      const refundTotal = res.data?.total_amount || (Number(selectedProduct.price) * quantity);
+      const refundFormatted = formatCurrency(refundTotal, currencySymbol);
+
+      Alert.alert(
+        'Return Processed',
+        `Return Transaction ID: ${res.data?.transaction_id}\n` +
+        `Customer Refund: ${refundFormatted}\n` +
+        `Inventory: ${quantity} unit(s) ${isDefective ? 'marked defective' : 'restocked to shelf'}.`,
+        [{ text: 'OK' }]
+      );
 
       // Reset form & reload
       setSelectedProduct(null);
       setSearchQuery('');
+      setOriginalTxnId('');
       setQuantity(1);
       loadProducts();
     } catch (err: any) {
@@ -327,6 +332,32 @@ export default function SellerReturnsScreen() {
               );
             })}
           </View>
+        </View>
+
+        {/* 4. Original Transaction Reference (Optional) & Refund Summary */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>4. Receipt Reference & Refund</Text>
+          <Text style={styles.fieldLabel}>Original Transaction / Invoice # (Optional):</Text>
+          <TextInput
+            style={[styles.searchInput, { borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginTop: 4 }]}
+            placeholder="e.g. TXN-2026-XXXXXX"
+            placeholderTextColor={theme.textMuted}
+            value={originalTxnId}
+            onChangeText={setOriginalTxnId}
+            autoCapitalize="characters"
+          />
+
+          {selectedProduct && (
+            <View style={{ marginTop: 14, padding: 12, backgroundColor: 'rgba(16, 185, 129, 0.08)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)' }}>
+              <Text style={{ fontSize: 11, color: theme.textSecondary, fontWeight: '500' }}>Estimated Customer Refund Due:</Text>
+              <Text style={{ fontSize: 18, color: theme.accent, fontWeight: '800', marginTop: 2 }}>
+                {formatCurrency(Number(selectedProduct.price) * quantity, currencySymbol)}
+              </Text>
+              <Text style={{ fontSize: 10, color: theme.textMuted, marginTop: 2 }}>
+                Calculated at unit selling price: {formatCurrency(selectedProduct.price, currencySymbol)} × {quantity}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Submit Button */}

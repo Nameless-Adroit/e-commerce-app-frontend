@@ -7,43 +7,62 @@ import {
   TouchableOpacity, 
   ActivityIndicator, 
   RefreshControl,
-  Platform 
+  Modal,
+  TextInput,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Header } from '../../components/Header';
-import { analyticsApi, shopApi } from '../../services/api';
+import { analyticsApi, shopApi, businessApi, authApi } from '../../services/api';
 import { useTheme, useStyles } from '../../context/ThemeContext';
 import { AppTheme } from '../../theme/colors';
-import { GlobalSummary, DailyReport, Shop } from '../../types';
+import { GlobalSummary, DailyReport, Shop, Business, User } from '../../types';
 import { formatCurrency } from '../../utils/currency';
+
+const CURRENCY_OPTIONS = [
+  { code: 'TZS', symbol: 'TSh', name: 'Tanzanian Shilling' },
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling' },
+  { code: 'EUR', symbol: '€', name: 'Euro' }
+];
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
   const { theme } = useTheme();
   const styles = useStyles(createStyles);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [shops, setShops] = useState<Shop[]>([]);
   const [globalSummary, setGlobalSummary] = useState<GlobalSummary | null>(null);
   const [shopBreakdown, setShopBreakdown] = useState<DailyReport[]>([]);
-  const [shops, setShops] = useState<Shop[]>([]);
+
+  // Create Business Modal State
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [newBizName, setNewBizName] = useState('');
+  const [newBizCode, setNewBizCode] = useState('');
+  const [selectedCurrency, setSelectedCurrency] = useState(CURRENCY_OPTIONS[0]);
+  const [creating, setCreating] = useState(false);
 
   const loadData = async () => {
     try {
-      const [analyticsRes, shopsRes] = await Promise.all([
-        analyticsApi.getDailyReport(),
-        shopApi.getAllShops()
+      const [bizRes, usersRes, shopsRes, analyticsRes] = await Promise.all([
+        businessApi.getAllBusinesses(),
+        authApi.listUsers(),
+        shopApi.getAllShops(),
+        analyticsApi.getDailyReport()
       ]);
 
-      if (analyticsRes.data) {
-        if ('global_summary' in analyticsRes.data) {
-          setGlobalSummary(analyticsRes.data.global_summary);
-          setShopBreakdown(analyticsRes.data.shop_breakdown || []);
-        }
-      }
+      if (bizRes.data) setBusinesses(bizRes.data);
+      if (usersRes.data?.users) setUsers(usersRes.data.users);
+      if (shopsRes.data?.shops) setShops(shopsRes.data.shops);
 
-      if (shopsRes.data?.shops) {
-        setShops(shopsRes.data.shops);
+      if (analyticsRes.data && 'global_summary' in analyticsRes.data) {
+        setGlobalSummary(analyticsRes.data.global_summary);
+        setShopBreakdown(analyticsRes.data.shop_breakdown || []);
       }
     } catch (err: any) {
       console.error('Failed to load super admin data:', err);
@@ -62,9 +81,40 @@ export default function SuperAdminDashboard() {
     loadData();
   };
 
+  const handleCreateBusiness = async () => {
+    if (!newBizName.trim()) {
+      Alert.alert('Required', 'Please enter a business display name.');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      await businessApi.createBusiness({
+        name: newBizName.trim(),
+        business_code: newBizCode.trim() || undefined,
+        currency_code: selectedCurrency.code,
+        currency_symbol: selectedCurrency.symbol,
+        currency_name: selectedCurrency.name
+      });
+
+      Alert.alert('Success', `Business '${newBizName}' created successfully.`);
+      setCreateModalVisible(false);
+      setNewBizName('');
+      setNewBizCode('');
+      loadData();
+    } catch (err: any) {
+      Alert.alert('Creation Failed', err.message || 'Could not create business.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const adminCount = users.filter((u) => u.role === 'admin' && u.is_active).length;
+  const sellerCount = users.filter((u) => u.role === 'seller' && u.is_active).length;
+
   return (
     <View style={styles.container}>
-      <Header title="Platform Overseer" subtitle="Global Multi-Store Administration" />
+      <Header title="Platform Overseer" subtitle="System-Level Enterprise Administration" />
 
       {loading ? (
         <View style={styles.center}>
@@ -81,124 +131,238 @@ export default function SuperAdminDashboard() {
           <View style={styles.shortcutRow}>
             <TouchableOpacity 
               style={[styles.shortcutBtn, { borderColor: theme.primary }]}
-              onPress={() => router.push('/super-admin/shops' as any)}
+              onPress={() => setCreateModalVisible(true)}
+              activeOpacity={0.8}
             >
-              <Ionicons name="business" size={20} color={theme.primary} />
-              <Text style={styles.shortcutText}>Manage Shops</Text>
+              <Ionicons name="add-circle" size={20} color={theme.primary} />
+              <Text style={styles.shortcutText}>New Business</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
               style={[styles.shortcutBtn, { borderColor: theme.secondary }]}
               onPress={() => router.push('/super-admin/users' as any)}
+              activeOpacity={0.8}
             >
               <Ionicons name="people" size={20} color={theme.secondary} />
-              <Text style={styles.shortcutText}>User Accounts</Text>
+              <Text style={styles.shortcutText}>Admins & Users</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.shortcutBtn, { borderColor: theme.accent }]}
+              onPress={() => router.push('/super-admin/shops' as any)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="storefront" size={20} color={theme.accent} />
+              <Text style={styles.shortcutText}>All Shops</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Section: Today's Global Performance */}
-          <Text style={styles.sectionHeader}>Today's Cross-Shop Performance</Text>
-          
+          {/* Section 1: System-Wide Overview Grid */}
+          <Text style={styles.sectionHeader}>System Overview</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-                <Ionicons name="cash-outline" size={22} color={theme.accent} />
+              <View style={[styles.statIcon, { backgroundColor: 'rgba(79, 70, 229, 0.1)' }]}>
+                <Ionicons name="business" size={20} color={theme.primary} />
               </View>
-              <Text style={styles.statLabel}>Total Revenue</Text>
-              <Text style={styles.statValue}>
-                {formatCurrency(globalSummary?.total_revenue, 'TSh')}
-              </Text>
-              <Text style={[
-                styles.statSub,
-                Number(globalSummary?.total_net_profit || 0) < 0 && { color: theme.danger }
-              ]}>
-                {Number(globalSummary?.total_net_profit || 0) < 0 ? 'Net Loss: -' : 'Profit: '}
-                {formatCurrency(Math.abs(Number(globalSummary?.total_net_profit || 0)), 'TSh')}
-              </Text>
+              <Text style={styles.statLabel}>Businesses</Text>
+              <Text style={styles.statValue}>{businesses.length}</Text>
+              <Text style={styles.statSub}>Registered Enterprise Tenants</Text>
             </View>
 
             <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
-                <Ionicons name="cube-outline" size={22} color={theme.primary} />
+              <View style={[styles.statIcon, { backgroundColor: 'rgba(14, 165, 233, 0.1)' }]}>
+                <Ionicons name="shield-checkmark" size={20} color={theme.secondary} />
               </View>
-              <Text style={styles.statLabel}>Units Sold Today</Text>
-              <Text style={styles.statValue}>{globalSummary?.total_units_sold || 0}</Text>
-              <Text style={styles.statSub}>{globalSummary?.total_transactions || 0} Transactions</Text>
+              <Text style={styles.statLabel}>Business Admins</Text>
+              <Text style={styles.statValue}>{adminCount}</Text>
+              <Text style={styles.statSub}>Active Business Owners</Text>
             </View>
 
             <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-                <Ionicons name="trending-down-outline" size={22} color={theme.danger} />
+              <View style={[styles.statIcon, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                <Ionicons name="storefront" size={20} color={theme.accent} />
               </View>
-              <Text style={styles.statLabel}>Global Shrinkage</Text>
-              <Text style={[styles.statValue, { color: theme.danger }]}>
-                {globalSummary?.total_shrinkage_count || 0} units
-              </Text>
-              <Text style={styles.statSub}>Cost: {formatCurrency(globalSummary?.total_shrinkage_cost, 'TSh')}</Text>
-            </View>
-
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: 'rgba(14, 165, 233, 0.15)' }]}>
-                <Ionicons name="storefront-outline" size={22} color={theme.secondary} />
-              </View>
-              <Text style={styles.statLabel}>Active Businesses</Text>
+              <Text style={styles.statLabel}>Active Shops</Text>
               <Text style={styles.statValue}>{shops.length}</Text>
-              <Text style={styles.statSub}>{globalSummary?.reporting_shops || shops.length} Reporting</Text>
+              <Text style={styles.statSub}>Storefront Branches</Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+                <Ionicons name="card" size={20} color="#F59E0B" />
+              </View>
+              <Text style={styles.statLabel}>Sellers / Cashiers</Text>
+              <Text style={styles.statValue}>{sellerCount}</Text>
+              <Text style={styles.statSub}>Operating Floor Staff</Text>
             </View>
           </View>
 
-          {/* Section: Independent Store Breakdown */}
+          {/* Section 2: Enterprise Businesses Directory */}
           <View style={styles.tableHeaderRow}>
-            <Text style={styles.sectionHeader}>Store Breakdown & Status</Text>
-            <TouchableOpacity onPress={() => router.push('/super-admin/shops' as any)}>
-              <Text style={styles.linkText}>View All Shops →</Text>
+            <Text style={styles.sectionHeader}>Registered Businesses</Text>
+            <TouchableOpacity onPress={() => setCreateModalVisible(true)}>
+              <Text style={styles.linkText}>+ Add Business</Text>
             </TouchableOpacity>
           </View>
 
-          {shops.map((shop) => {
-            const report = shopBreakdown.find((r) => r.shop_id === shop.id);
-            return (
-              <TouchableOpacity 
-                key={shop.id} 
-                style={styles.shopCard}
-                onPress={() => router.push('/super-admin/shops' as any)}
-              >
-                <View style={styles.shopCardHeader}>
-                  <View style={styles.shopInfo}>
-                    <Text style={styles.shopName}>{shop.name}</Text>
-                    <Text style={styles.shopCode}>Code: {shop.shop_code} • Staff: {shop.staff_count || 0}</Text>
+          {businesses.map((biz) => (
+            <View key={biz.id} style={styles.bizCard}>
+              <View style={styles.bizHeader}>
+                <View style={styles.bizHeaderLeft}>
+                  <View style={styles.bizBadge}>
+                    <Text style={styles.bizBadgeText}>{biz.business_code}</Text>
                   </View>
-                  <View style={styles.shopBadge}>
-                    <Ionicons name="checkmark-circle" size={14} color={theme.accent} />
-                    <Text style={styles.shopBadgeText}>Active</Text>
-                  </View>
-                </View>
-
-                <View style={styles.shopStatsRow}>
-                  <View style={styles.shopStatItem}>
-                    <Text style={styles.miniLabel}>Today Revenue</Text>
-                    <Text style={styles.miniValue}>{formatCurrency(report?.revenue_generated, shop.currency_symbol || 'TSh')}</Text>
-                  </View>
-                  <View style={styles.shopStatItem}>
-                    <Text style={styles.miniLabel}>Units Sold</Text>
-                    <Text style={styles.miniValue}>{report?.total_units_sold || 0}</Text>
-                  </View>
-                  <View style={styles.shopStatItem}>
-                    <Text style={styles.miniLabel}>Stock on Hand</Text>
-                    <Text style={styles.miniValue}>{shop.total_units_in_stock || 0} units</Text>
-                  </View>
-                  <View style={styles.shopStatItem}>
-                    <Text style={styles.miniLabel}>Shrinkage</Text>
-                    <Text style={[styles.miniValue, { color: (report?.shrinkage_count || 0) > 0 ? theme.danger : theme.textSecondary }]}>
-                      {report?.shrinkage_count || 0}
+                  <View>
+                    <Text style={styles.bizName}>{biz.name}</Text>
+                    <Text style={styles.bizCurrency}>
+                      Currency: {biz.currency_code} ({biz.currency_symbol})
                     </Text>
                   </View>
                 </View>
-              </TouchableOpacity>
-            );
-          })}
+
+                <View style={[
+                  styles.statusPill,
+                  biz.status === 'suspended' ? styles.statusSuspended : styles.statusActive
+                ]}>
+                  <Text style={[
+                    styles.statusText,
+                    biz.status === 'suspended' ? styles.statusTextSuspended : styles.statusTextActive
+                  ]}>
+                    {biz.status ? biz.status.toUpperCase() : 'ACTIVE'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.bizStatsRow}>
+                <View style={styles.bizStatItem}>
+                  <Text style={styles.miniLabel}>Shops</Text>
+                  <Text style={styles.miniValue}>{biz.shops_count || 0}</Text>
+                </View>
+                <View style={styles.bizStatItem}>
+                  <Text style={styles.miniLabel}>Admins</Text>
+                  <Text style={styles.miniValue}>{biz.admins_count || 0}</Text>
+                </View>
+                <View style={styles.bizStatItem}>
+                  <Text style={styles.miniLabel}>Sellers</Text>
+                  <Text style={styles.miniValue}>{biz.sellers_count || 0}</Text>
+                </View>
+                <View style={styles.bizStatItem}>
+                  <Text style={styles.miniLabel}>Total Sales</Text>
+                  <Text style={styles.miniValue}>
+                    {formatCurrency(biz.total_revenue || 0, biz.currency_symbol || 'TSh')}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ))}
+
+          {/* Section 3: Today's Global Performance Across All Shops */}
+          {globalSummary && (
+            <>
+              <Text style={[styles.sectionHeader, { marginTop: 14 }]}>Today's Global POS Activity</Text>
+              <View style={styles.statsGrid}>
+                <View style={styles.statCard}>
+                  <Text style={styles.statLabel}>Today's Global Revenue</Text>
+                  <Text style={[styles.statValue, { color: theme.accent }]}>
+                    {formatCurrency(globalSummary.total_revenue || 0)}
+                  </Text>
+                  <Text style={styles.statSub}>{globalSummary.total_transactions} Transactions Today</Text>
+                </View>
+
+                <View style={styles.statCard}>
+                  <Text style={styles.statLabel}>Units Sold Today</Text>
+                  <Text style={styles.statValue}>{globalSummary.total_units_sold}</Text>
+                  <Text style={styles.statSub}>Across {globalSummary.reporting_shops} Reporting Stores</Text>
+                </View>
+              </View>
+            </>
+          )}
         </ScrollView>
       )}
+
+      {/* Create Business Modal */}
+      <Modal visible={createModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderLeft}>
+                <Ionicons name="business-outline" size={24} color={theme.primary} />
+                <View>
+                  <Text style={styles.modalTitle}>Create New Business</Text>
+                  <Text style={styles.modalSub}>Establish ownership boundary for new enterprise</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setCreateModalVisible(false)}>
+                <Ionicons name="close" size={20} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalForm}>
+              <Text style={styles.fieldLabel}>Business Name *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. Serengeti General Traders"
+                placeholderTextColor={theme.textMuted}
+                value={newBizName}
+                onChangeText={setNewBizName}
+              />
+
+              <Text style={styles.fieldLabel}>Business Code (Optional)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. BIZ03 (auto-generated if empty)"
+                placeholderTextColor={theme.textMuted}
+                value={newBizCode}
+                onChangeText={setNewBizCode}
+                autoCapitalize="characters"
+              />
+
+              <Text style={styles.fieldLabel}>Operational Currency (Default: TZS)</Text>
+              <View style={styles.currencyRow}>
+                {CURRENCY_OPTIONS.map((c) => {
+                  const isSelected = selectedCurrency.code === c.code;
+                  return (
+                    <TouchableOpacity
+                      key={c.code}
+                      style={[styles.currencyChip, isSelected && styles.currencyChipActive]}
+                      onPress={() => setSelectedCurrency(c)}
+                    >
+                      <Text style={[styles.currencyCode, isSelected && styles.currencyCodeActive]}>
+                        {c.code}
+                      </Text>
+                      <Text style={[styles.currencySymbol, isSelected && styles.currencySymbolActive]}>
+                        {c.symbol}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setCreateModalVisible(false)}
+                disabled={creating}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.confirmBtn, creating && { opacity: 0.7 }]}
+                onPress={handleCreateBusiness}
+                disabled={creating}
+              >
+                {creating ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Text style={styles.confirmBtnText}>Create Business</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -222,35 +386,31 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    paddingHorizontal: 22,
-    paddingTop: 18,
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 40
   },
   shortcutRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 22
+    gap: 10,
+    marginBottom: 20
   },
   shortcutBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     backgroundColor: theme.surface,
     borderWidth: 1,
-    borderRadius: theme.radius.md,
-    paddingVertical: 13,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1
+    borderRadius: 12,
+    paddingVertical: 12,
+    ...theme.shadow
   },
   shortcutText: {
     color: theme.text,
-    fontSize: 14,
-    fontWeight: '600'
+    fontSize: 12,
+    fontWeight: '700'
   },
   sectionHeader: {
     color: theme.text,
@@ -262,19 +422,19 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 12,
-    marginBottom: 8
+    marginTop: 8,
+    marginBottom: 10
   },
   linkText: {
     color: theme.primary,
     fontSize: 13,
-    fontWeight: '600'
+    fontWeight: '700'
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 22
+    marginBottom: 20
   },
   statCard: {
     flex: 1,
@@ -282,26 +442,22 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
-    borderRadius: theme.radius.lg,
+    borderRadius: 14,
     padding: 16,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2
+    ...theme.shadow
   },
   statIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10
+    marginBottom: 8
   },
   statLabel: {
     color: theme.textSecondary,
     fontSize: 12,
-    fontWeight: '500'
+    fontWeight: '600'
   },
   statValue: {
     color: theme.text,
@@ -313,60 +469,77 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     color: theme.textMuted,
     fontSize: 11
   },
-  shopCard: {
+  bizCard: {
     backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: theme.surfaceBorder,
-    borderRadius: theme.radius.lg,
+    borderRadius: 14,
     padding: 16,
-    marginBottom: 14,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2
+    marginBottom: 12,
+    ...theme.shadow
   },
-  shopCardHeader: {
+  bizHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 12
   },
-  shopInfo: {
-    flex: 1
-  },
-  shopName: {
-    color: theme.text,
-    fontSize: 16,
-    fontWeight: '700'
-  },
-  shopCode: {
-    color: theme.textSecondary,
-    fontSize: 12,
-    marginTop: 2
-  },
-  shopBadge: {
+  bizHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    gap: 10,
+    flex: 1
+  },
+  bizBadge: {
+    backgroundColor: 'rgba(79, 70, 229, 0.1)',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: theme.radius.full
+    borderRadius: 6
   },
-  shopBadgeText: {
-    color: theme.accent,
+  bizBadgeText: {
+    color: theme.primary,
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  bizName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.text
+  },
+  bizCurrency: {
     fontSize: 11,
-    fontWeight: '600'
+    color: theme.textMuted,
+    marginTop: 2
   },
-  shopStatsRow: {
+  statusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
+  statusActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)'
+  },
+  statusSuspended: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)'
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '700'
+  },
+  statusTextActive: {
+    color: theme.accent
+  },
+  statusTextSuspended: {
+    color: theme.danger
+  },
+  bizStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: theme.surfaceLight,
     padding: 10,
-    borderRadius: theme.radius.md
+    borderRadius: 10
   },
-  shopStatItem: {
+  bizStatItem: {
     alignItems: 'center'
   },
   miniLabel: {
@@ -375,8 +548,128 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   miniValue: {
     color: theme.text,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     marginTop: 2
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    padding: 20
+  },
+  modalCard: {
+    backgroundColor: theme.surface,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder,
+    ...theme.shadow
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16
+  },
+  modalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.text
+  },
+  modalSub: {
+    fontSize: 11,
+    color: theme.textSecondary,
+    marginTop: 2
+  },
+  modalForm: {
+    gap: 10
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.textSecondary,
+    marginTop: 4
+  },
+  modalInput: {
+    backgroundColor: theme.surfaceLight,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 44,
+    fontSize: 14,
+    color: theme.text
+  },
+  currencyRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4
+  },
+  currencyChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: theme.surfaceLight,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder
+  },
+  currencyChipActive: {
+    borderColor: theme.primary,
+    backgroundColor: 'rgba(79, 70, 229, 0.08)'
+  },
+  currencyCode: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.text
+  },
+  currencyCodeActive: {
+    color: theme.primary
+  },
+  currencySymbol: {
+    fontSize: 10,
+    color: theme.textMuted,
+    marginTop: 2
+  },
+  currencySymbolActive: {
+    color: theme.primary
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 20
+  },
+  cancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder
+  },
+  cancelBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.textSecondary
+  },
+  confirmBtn: {
+    backgroundColor: theme.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  confirmBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff'
   }
 });

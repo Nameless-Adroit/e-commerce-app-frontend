@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Badge } from './Badge';
 import { SettingsModal } from './SettingsModal';
+import { ShopSelectorModal } from './ShopSelectorModal';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 interface HeaderProps {
   title: string;
@@ -16,11 +18,12 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, activeShop, availableShops } = useAuth();
   const { theme } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shopSelectorOpen, setShopSelectorOpen] = useState(false);
 
   // Dynamic top safe inset (guarantees notch & punch-hole clearance with comfortable padding)
   const topSafePadding = Math.max(
@@ -58,6 +61,12 @@ export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) 
     );
   };
 
+  const resolvedSubtitle = subtitle || (
+    user?.role === 'admin'
+      ? `${user?.business_name || 'Business'} • ${activeShop ? activeShop.name : 'Select Shop'}`
+      : (user?.shop_name ? `${user.shop_name} (${user.shop_code})` : null)
+  );
+
   return (
     <>
       <View 
@@ -83,15 +92,28 @@ export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) 
             )}
             <View style={styles.titleWrapper}>
               <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>{title}</Text>
-              {subtitle ? (
-                <Text style={[styles.subtitle, { color: theme.textSecondary }]} numberOfLines={1}>{subtitle}</Text>
-              ) : user?.shop_name ? (
-                <Text style={[styles.subtitle, { color: theme.textSecondary }]} numberOfLines={1}>{user.shop_name} ({user.shop_code})</Text>
+              {resolvedSubtitle ? (
+                <Text style={[styles.subtitle, { color: theme.textSecondary }]} numberOfLines={1}>{resolvedSubtitle}</Text>
               ) : null}
             </View>
           </View>
 
           <View style={styles.rightCol}>
+            {/* Admin Shop Switcher Pill */}
+            {user?.role === 'admin' && availableShops.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setShopSelectorOpen(true)}
+                style={[styles.shopSwitcherBtn, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="storefront-outline" size={14} color={theme.primary} />
+                <Text style={[styles.shopSwitcherText, { color: theme.text }]} numberOfLines={1}>
+                  {activeShop ? activeShop.shop_code : 'Shop'}
+                </Text>
+                <Ionicons name="chevron-down" size={12} color={theme.textMuted} />
+              </TouchableOpacity>
+            )}
+
             {rightAction}
             {!rightAction && <Badge label={roleInfo.text} variant={roleInfo.variant} />}
             
@@ -118,6 +140,16 @@ export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) 
 
       {/* App Settings Modal */}
       <SettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {/* Admin Shop Selector Modal */}
+      <ShopSelectorModal visible={shopSelectorOpen} onClose={() => setShopSelectorOpen(false)} />
+
+      {/* Mandatory Password Change Modal for Admins with temporary credentials */}
+      <ChangePasswordModal
+        visible={Boolean(user?.temporary_password)}
+        onClose={() => {}}
+        isForced={true}
+      />
     </>
   );
 }
@@ -182,5 +214,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(220, 38, 38, 0.08)',
     borderWidth: 1,
     borderColor: 'rgba(220, 38, 38, 0.16)'
+  },
+  shopSwitcherBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    maxWidth: 95
+  },
+  shopSwitcherText: {
+    fontSize: 11,
+    fontWeight: '700'
   }
 });

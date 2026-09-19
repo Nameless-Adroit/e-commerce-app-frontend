@@ -9,6 +9,7 @@ import {
   Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, ThemeMode } from '../context/ThemeContext';
 import { getApiBaseUrl } from '../config/apiConfig';
@@ -131,7 +132,9 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
             <View style={[styles.infoCard, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]}>
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>App Version:</Text>
-                <Text style={[styles.infoValue, { color: theme.text }]}>v1.1.0 (OTA Patch 1)</Text>
+                <Text style={[styles.infoValue, { color: theme.text }]}>
+                  v{Constants.expoConfig?.version || '2.0.0'} (Build {Constants.expoConfig?.android?.versionCode || 4})
+                </Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Build Type:</Text>

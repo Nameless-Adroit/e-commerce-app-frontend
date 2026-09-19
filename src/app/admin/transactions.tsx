@@ -17,6 +17,7 @@ import { Header } from '../../components/Header';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { posApi } from '../../services/api';
 import { useTheme, useStyles } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { AppTheme } from '../../theme/colors';
 import { Transaction, TransactionSummary } from '../../types';
 import { formatCurrency } from '../../utils/currency';
@@ -48,6 +49,7 @@ function formatDisplayDate(dateStr: string): string {
 
 export default function AdminTransactions() {
   const { theme } = useTheme();
+  const { activeShop, currencySymbol } = useAuth();
   const styles = useStyles(createStyles);
   const params = useLocalSearchParams<{ date?: string }>();
   const todayStr = useMemo(() => formatDateToISO(new Date()), []);
@@ -96,7 +98,7 @@ export default function AdminTransactions() {
 
   useEffect(() => {
     fetchTransactionsForDate(selectedDate);
-  }, [selectedDate]);
+  }, [selectedDate, activeShop]);
 
   const handlePrevDay = () => {
     const current = parseISODate(selectedDate);

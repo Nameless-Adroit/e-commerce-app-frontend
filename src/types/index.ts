@@ -1,21 +1,47 @@
 export type Role = 'super_admin' | 'admin' | 'seller';
 
+export interface Business {
+  id: number;
+  business_code: string;
+  name: string;
+  currency_code: string;
+  currency_symbol: string;
+  currency_name: string;
+  status: 'active' | 'suspended';
+  shops_count?: number;
+  admins_count?: number;
+  sellers_count?: number;
+  total_revenue?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface User {
   id: number;
   username: string;
   email: string;
   full_name: string;
   role: Role;
+  business_id?: number | null;
+  business_name?: string | null;
+  business_code?: string | null;
+  business_currency?: string | null;
+  business_currency_symbol?: string | null;
   shop_id: number | null;
   shop_name?: string | null;
   shop_code?: string | null;
   shop_currency?: string | null;
   shop_currency_symbol?: string | null;
   shop_currency_name?: string | null;
+  temporary_password?: boolean;
+  is_active?: boolean;
 }
 
 export interface Shop {
   id: number;
+  business_id?: number;
+  business_name?: string;
+  business_code?: string;
   shop_code: string;
   name: string;
   address?: string | null;
@@ -66,7 +92,7 @@ export interface TransactionLineItem {
 }
 
 export interface Transaction {
-  id: string; // TXN-SHP01-YYYYMMDD-XXXX
+  id: string; // TXN-SHP01-YYYYMMDD-XXXX or RTN-SHP01-YYYYMMDD-XXXX
   shop_id: number;
   shop_name?: string;
   shop_code?: string;
@@ -77,10 +103,44 @@ export interface Transaction {
   total_amount: number;
   payment_method: 'cash' | 'card' | 'mobile_money';
   status: 'completed' | 'refunded' | 'cancelled';
+  original_transaction_id?: string | null;
   notes?: string | null;
   item_count?: number;
   items?: TransactionLineItem[];
   transaction_date: string;
+}
+
+export interface ReturnPayload {
+  shop_id?: number;
+  items: Array<{
+    productId: string;
+    quantity: number;
+    unitPrice?: number;
+  }>;
+  reason: string;
+  original_transaction_id?: string;
+  payment_method?: 'cash' | 'card' | 'mobile_money';
+  is_defective?: boolean;
+}
+
+export interface ReturnResponse {
+  transaction_id: string;
+  shop_id: number;
+  seller_id: number;
+  total_amount: number;
+  status: 'refunded';
+  original_transaction_id?: string | null;
+  reason: string;
+  items: Array<{
+    productId: string;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+    previousStock: number;
+    newStock: number;
+    restocked: boolean;
+  }>;
 }
 
 export interface TransactionSummary {
@@ -196,4 +256,5 @@ export interface ApiResponse<T = any> {
   data?: T;
   stack?: string;
 }
+
 

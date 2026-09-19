@@ -18,6 +18,7 @@ import { ProductDetailModal } from '../../components/ProductDetailModal';
 import { useCart } from '../../context/CartContext';
 import { posApi, productApi, analyticsApi } from '../../services/api';
 import { useTheme, useStyles } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { AppTheme } from '../../theme/colors';
 import { Product, TopProduct } from '../../types';
 import { formatCurrency } from '../../utils/currency';
@@ -25,6 +26,7 @@ import { formatCurrency } from '../../utils/currency';
 export default function SellerCounterScreen() {
   const router = useRouter();
   const { theme } = useTheme();
+  const { user, activeShop, currencySymbol } = useAuth();
   const styles = useStyles(createStyles);
   const { addItem, items, totalUnits, totalAmount } = useCart();
 
@@ -39,7 +41,7 @@ export default function SellerCounterScreen() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activeShop]);
 
   const loadData = async () => {
     setLoading(true);
@@ -115,6 +117,20 @@ export default function SellerCounterScreen() {
           </TouchableOpacity>
         }
       />
+
+      {user?.role === 'admin' && (
+        <View style={styles.adminBanner}>
+          <View style={styles.adminBannerLeft}>
+            <Ionicons name="shield-checkmark" size={16} color={theme.primary} />
+            <Text style={styles.adminBannerText}>
+              Admin Register Mode • {activeShop?.name || 'Selected Store'}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => router.push('/admin' as any)} style={styles.adminBackBtn}>
+            <Text style={styles.adminBackBtnText}>Admin Panel →</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView
         style={styles.scroll}
@@ -737,6 +753,38 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   floatingCartActionText: {
     color: '#ffffff',
     fontSize: 13,
+    fontWeight: '700'
+  },
+  adminBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(99, 102, 241, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8
+  },
+  adminBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1
+  },
+  adminBannerText: {
+    color: theme.primary,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  adminBackBtn: {
+    backgroundColor: theme.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6
+  },
+  adminBackBtnText: {
+    color: '#fff',
+    fontSize: 11,
     fontWeight: '700'
   }
 });

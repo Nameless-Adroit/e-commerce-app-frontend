@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Header } from '../../components/Header';
 import { analyticsApi } from '../../services/api';
 import { useTheme, useStyles } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { AppTheme } from '../../theme/colors';
 import { ProductSoldReportItem, ProductsSoldReportResponse } from '../../types';
 import { formatCurrency } from '../../utils/currency';
@@ -21,6 +22,7 @@ type TimeFilter = 'TODAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'ALL_TIME';
 
 export default function AdminAnalytics() {
   const { theme } = useTheme();
+  const { activeShop, currencySymbol } = useAuth();
   const styles = useStyles(createStyles);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('THIS_MONTH');
   const [reportData, setReportData] = useState<ProductsSoldReportResponse | null>(null);
@@ -83,7 +85,7 @@ export default function AdminAnalytics() {
 
   useEffect(() => {
     loadReport();
-  }, [timeFilter, selectedCategory]);
+  }, [timeFilter, selectedCategory, activeShop]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -106,8 +108,6 @@ export default function AdminAnalytics() {
     }
     return true;
   });
-
-  const currencySymbol = products[0]?.currency_symbol || 'TSh';
 
   return (
     <View style={styles.container}>

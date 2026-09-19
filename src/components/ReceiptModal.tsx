@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useStyles } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { AppTheme } from '../theme/colors';
 import { Transaction } from '../types';
 import { formatCurrency } from '../utils/currency';
@@ -15,6 +16,7 @@ interface ReceiptModalProps {
 
 export function ReceiptModal({ visible, transaction, onClose, title = 'Official Sales Receipt' }: ReceiptModalProps) {
   const { theme } = useTheme();
+  const { currencySymbol } = useAuth();
   const styles = useStyles(createStyles);
   if (!transaction) return null;
 
@@ -40,11 +42,11 @@ export function ReceiptModal({ visible, transaction, onClose, title = 'Official 
                 <View style={styles.itemColLeft}>
                   <Text style={styles.itemName}>{item.name || item.product_name || `Item ${index + 1}`}</Text>
                   <Text style={styles.itemSub}>
-                    {item.quantity} x {formatCurrency(item.unit_price)}
+                    {item.quantity} x {formatCurrency(item.unit_price, currencySymbol)}
                   </Text>
                 </View>
                 <Text style={styles.itemTotal}>
-                  {formatCurrency(Number(item.quantity) * Number(item.unit_price))}
+                  {formatCurrency(Number(item.quantity) * Number(item.unit_price), currencySymbol)}
                 </Text>
               </View>
             ))}
@@ -57,13 +59,13 @@ export function ReceiptModal({ visible, transaction, onClose, title = 'Official 
               <View style={styles.subtotalRow}>
                 <Text style={styles.subtotalLabel}>Subtotal</Text>
                 <Text style={styles.subtotalValue}>
-                  {formatCurrency(transaction.subtotal_amount || transaction.total_amount)}
+                  {formatCurrency(transaction.subtotal_amount || transaction.total_amount, currencySymbol)}
                 </Text>
               </View>
               <View style={styles.discountRow}>
                 <Text style={styles.discountLabel}>Discount Applied</Text>
                 <Text style={styles.discountValue}>
-                  -{formatCurrency(transaction.discount_amount)}
+                  -{formatCurrency(transaction.discount_amount, currencySymbol)}
                 </Text>
               </View>
               <View style={styles.divider} />
@@ -75,7 +77,7 @@ export function ReceiptModal({ visible, transaction, onClose, title = 'Official 
               Total Paid ({transaction.payment_method?.toUpperCase()})
             </Text>
             <Text style={styles.totalValue} numberOfLines={1} adjustsFontSizeToFit>
-              {formatCurrency(transaction.total_amount)}
+              {formatCurrency(transaction.total_amount, currencySymbol)}
             </Text>
           </View>
 

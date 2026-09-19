@@ -24,10 +24,12 @@ import { AppTheme } from '../../theme/colors';
 import { Product } from '../../types';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 
 export default function AdminProducts() {
   const router = useRouter();
+  const { activeShop, currencySymbol } = useAuth();
   const { theme } = useTheme();
   const styles = useStyles(createStyles);
   const [products, setProducts] = useState<Product[]>([]);
@@ -62,7 +64,7 @@ export default function AdminProducts() {
 
   useEffect(() => {
     loadProducts();
-  }, [filterLowStock]);
+  }, [filterLowStock, activeShop]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -184,11 +186,11 @@ export default function AdminProducts() {
                 <View style={styles.priceRow}>
                   <View>
                     <Text style={styles.metaLabel}>Retail Price</Text>
-                    <Text style={styles.priceVal}>{formatCurrency(item.price, item.currency_symbol)}</Text>
+                    <Text style={styles.priceVal}>{formatCurrency(item.price, item.currency_symbol || currencySymbol)}</Text>
                   </View>
                   <View>
                     <Text style={styles.metaLabel}>Cost Price</Text>
-                    <Text style={styles.costVal}>{formatCurrency(item.cost_price, item.currency_symbol)}</Text>
+                    <Text style={styles.costVal}>{formatCurrency(item.cost_price, item.currency_symbol || currencySymbol)}</Text>
                   </View>
                   <View>
                     <Text style={styles.metaLabel}>Available Units</Text>

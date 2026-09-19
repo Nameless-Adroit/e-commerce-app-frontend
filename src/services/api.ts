@@ -10,6 +10,9 @@ import {
   DailyReport, 
   GlobalSummary, 
   Shop,
+  Business,
+  ReturnPayload,
+  ReturnResponse,
   TopProduct,
   ProductSoldReportItem,
   ProductsSoldReportResponse,
@@ -17,8 +20,10 @@ import {
 } from '../types';
 
 const TOKEN_KEY = 'POS_AUTH_TOKEN';
+const ACTIVE_SHOP_KEY = 'POS_ACTIVE_SHOP_ID';
 
 let inMemoryToken: string | null = null;
+let inMemoryActiveShopId: number | null = null;
 
 export async function setAuthToken(token: string | null): Promise<void> {
   inMemoryToken = token;
@@ -39,12 +44,33 @@ export async function getAuthToken(): Promise<string | null> {
   }
 }
 
+export async function setActiveShopId(shopId: number | null): Promise<void> {
+  inMemoryActiveShopId = shopId;
+  if (shopId) {
+    await AsyncStorage.setItem(ACTIVE_SHOP_KEY, String(shopId));
+  } else {
+    await AsyncStorage.removeItem(ACTIVE_SHOP_KEY);
+  }
+}
+
+export async function getActiveShopId(): Promise<number | null> {
+  if (inMemoryActiveShopId !== null) return inMemoryActiveShopId;
+  try {
+    const stored = await AsyncStorage.getItem(ACTIVE_SHOP_KEY);
+    inMemoryActiveShopId = stored ? parseInt(stored, 10) : null;
+    return inMemoryActiveShopId;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Generic Fetch wrapper with JSON parsing and error formatting
  */
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const baseUrl = getApiBaseUrl();
   const token = await getAuthToken();
+  const activeShopId = await getActiveShopId();
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -53,6 +79,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  if (activeShopId && !headers['X-Shop-Id']) {
+    headers['X-Shop-Id'] = String(activeShopId);
   }
 
   const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -102,7 +132,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 // -----------------------------------------------------------------------------
-// Authentication API
+// Authentication & User Management API
 // -----------------------------------------------------------------------------
 export const authApi = {
   async login(identifier: string, password: string): Promise<ApiResponse<{ token: string; redirect_url: string; user: User }>> {
@@ -120,12 +150,43 @@ export const authApi = {
     return request<ApiResponse<User>>('/auth/profile');
   },
 
+  async changePassword(oldPassword: string, newPassword: string): Promise<ApiResponse<any>> {
+    return request<ApiResponse<any>>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
+    });
+  },
+
+  async resetPassword(userId: number, newPassword: string): Promise<ApiResponse<any>> {
+    return request<ApiResponse<any>>(`/auth/users/${userId}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ new_password: newPassword })
+    });
+  },
+
+  async setUserStatus(userId: number, isActive: boolean): Promise<ApiResponse<any>> {
+    return request<ApiResponse<any>>(`/auth/users/${userId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ is_active: isActive })
+    });
+  },
+
+  async listUsers(params: { role?: string; business_id?: number; shop_id?: number } = {}): Promise<ApiResponse<{ users: User[] }>> {
+    const query = new URLSearchParams();
+    if (params.role) query.append('role', params.role);
+    if (params.business_id) query.append('business_id', String(params.business_id));
+    if (params.shop_id) query.append('shop_id', String(params.shop_id));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return request<ApiResponse<{ users: User[] }>>(`/auth/users${qs}`);
+  },
+
   async registerUser(userData: {
     username: string;
     email: string;
     password: string;
     role: string;
     full_name: string;
+    business_id?: number;
     shop_id?: number;
   }): Promise<ApiResponse<User>> {
     return request<ApiResponse<User>>('/auth/users', {
@@ -136,6 +197,7 @@ export const authApi = {
 
   async logout(): Promise<void> {
     await setAuthToken(null);
+    await setActiveShopId(null);
   }
 };
 
@@ -248,6 +310,13 @@ export const posApi = {
     });
   },
 
+  async processReturn(payload: ReturnPayload): Promise<ApiResponse<ReturnResponse>> {
+    return request<ApiResponse<ReturnResponse>>('/pos/return', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
   async getTransactions(params: {
     limit?: number;
     offset?: number;
@@ -330,6 +399,7 @@ export const shopApi = {
   },
 
   async createShop(shopData: {
+    business_id?: number;
     shop_code: string;
     name: string;
     address?: string;
@@ -346,5 +416,60 @@ export const shopApi = {
 
   async getShopById(id: number): Promise<ApiResponse<Shop & { staff: User[]; stats: any }>> {
     return request<ApiResponse<Shop & { staff: User[]; stats: any }>>(`/shops/${id}`);
+  }
+};
+
+// -----------------------------------------------------------------------------
+// Business Management API (Super Admin & Admin Multi-Tenant)
+// -----------------------------------------------------------------------------
+export const businessApi = {
+  async getAllBusinesses(): Promise<ApiResponse<Business[]>> {
+    return request<ApiResponse<Business[]>>('/businesses');
+  },
+
+  async getBusinessById(id: number): Promise<ApiResponse<Business & { shops: Shop[]; admins: User[]; sellers: User[] }>> {
+    return request<ApiResponse<Business & { shops: Shop[]; admins: User[]; sellers: User[] }>>(`/businesses/${id}`);
+  },
+
+  async createBusiness(data: {
+    name: string;
+    business_code?: string;
+    currency_code?: string;
+    currency_symbol?: string;
+    currency_name?: string;
+  }): Promise<ApiResponse<Business>> {
+    return request<ApiResponse<Business>>('/businesses', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async updateBusiness(id: number, data: {
+    name?: string;
+    currency_code?: string;
+    currency_symbol?: string;
+    currency_name?: string;
+    status?: 'active' | 'suspended';
+  }): Promise<ApiResponse<Business>> {
+    return request<ApiResponse<Business>>(`/businesses/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async getBusinessOverview(id?: number): Promise<ApiResponse<{
+    business: Business;
+    summary: {
+      shops_count: number;
+      staff_count: number;
+      products_count: number;
+      total_units_in_stock: number;
+      total_revenue: number;
+      today_revenue: number;
+    };
+    shops: Shop[];
+  }>> {
+    const endpoint = id ? `/businesses/${id}/overview` : '/businesses/my/overview';
+    return request<ApiResponse<any>>(endpoint);
   }
 };
