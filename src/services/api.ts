@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApiBaseUrl } from '../config/apiConfig';
 import { 
@@ -81,11 +82,23 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  if (activeShopId && !headers['X-Shop-Id']) {
+  // On native platforms, custom headers are not subject to browser CORS preflight.
+  // On Web, browsers reject requests if X-Shop-Id is not listed in server's Access-Control-Allow-Headers.
+  if (activeShopId && Platform.OS !== 'web' && !headers['X-Shop-Id']) {
     headers['X-Shop-Id'] = String(activeShopId);
   }
 
-  const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  let url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+
+  // Pass shop_id as query parameter (supported by the backend enforceShopScope middleware)
+  // so Web works reliably without triggering custom header CORS preflight issues.
+  if (activeShopId) {
+    const hasShopIdInQuery = /(?:[?&])shop_id=/.test(url);
+    if (!hasShopIdInQuery) {
+      const separator = url.includes('?') ? '&' : '?';
+      url = `${url}${separator}shop_id=${encodeURIComponent(String(activeShopId))}`;
+    }
+  }
 
   try {
     const response = await fetch(url, {
