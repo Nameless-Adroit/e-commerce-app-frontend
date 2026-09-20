@@ -81,11 +81,6 @@ export function ReceiptModal({ visible, transaction, onClose, title = 'Official 
             </Text>
           </View>
 
-          <View style={styles.acidBadge}>
-            <Ionicons name="shield-checkmark" size={14} color={theme.accent} />
-            <Text style={styles.acidText}>ACID Atomic Inventory Deduction Confirmed</Text>
-          </View>
-
           <TouchableOpacity onPress={onClose} style={styles.doneBtn}>
             <Text style={styles.doneText}>Done / Next Sale</Text>
           </TouchableOpacity>

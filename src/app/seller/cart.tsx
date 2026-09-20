@@ -880,7 +880,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   totalValue: {
     fontSize: 22,
     fontWeight: '800',
-    color: theme.accent
+    color: theme.isDark ? '#34D399' : theme.accent
   },
   checkoutBtn: {
     backgroundColor: theme.primary,

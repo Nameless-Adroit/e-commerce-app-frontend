@@ -19,7 +19,7 @@ import { analyticsApi, productApi, shopApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, useStyles } from '../../context/ThemeContext';
 import { AppTheme } from '../../theme/colors';
-import { DailyReport, Product, Shop } from '../../types';
+import { DailyReport, Product, Shop, ShopRequest } from '../../types';
 import { formatCurrency } from '../../utils/currency';
 
 export default function AdminDashboard() {
@@ -32,21 +32,24 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [dailyReport, setDailyReport] = useState<DailyReport | null>(null);
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
+  const [shopRequests, setShopRequests] = useState<ShopRequest[]>([]);
   const [shopSelectorVisible, setShopSelectorVisible] = useState(false);
 
-  // Create Shop Modal state
-  const [createShopModalVisible, setCreateShopModalVisible] = useState(false);
-  const [newShopCode, setNewShopCode] = useState('');
-  const [newShopName, setNewShopName] = useState('');
-  const [newShopAddress, setNewShopAddress] = useState('');
-  const [newShopPhone, setNewShopPhone] = useState('');
-  const [creatingShop, setCreatingShop] = useState(false);
+  // Request Shop Modal state
+  const [requestShopModalVisible, setRequestShopModalVisible] = useState(false);
+  const [reqShopCode, setReqShopCode] = useState('');
+  const [reqShopName, setReqShopName] = useState('');
+  const [reqShopAddress, setReqShopAddress] = useState('');
+  const [reqShopPhone, setReqShopPhone] = useState('');
+  const [reqAdminNotes, setReqAdminNotes] = useState('');
+  const [submittingRequest, setSubmittingRequest] = useState(false);
 
   const loadData = async () => {
     try {
-      const [reportRes, productsRes] = await Promise.all([
+      const [reportRes, productsRes, requestsRes] = await Promise.all([
         analyticsApi.getDailyReport(),
-        productApi.listProducts({ low_stock: true, limit: 5 })
+        productApi.listProducts({ low_stock: true, limit: 5 }),
+        shopApi.getShopRequests()
       ]);
 
       if (reportRes.data && !('global_summary' in reportRes.data)) {
@@ -55,6 +58,10 @@ export default function AdminDashboard() {
 
       if (productsRes.data) {
         setLowStockProducts(productsRes.data.products || []);
+      }
+
+      if (requestsRes.data?.requests) {
+        setShopRequests(requestsRes.data.requests);
       }
     } catch (err) {
       console.error('Error loading admin dashboard:', err);
@@ -75,45 +82,44 @@ export default function AdminDashboard() {
     setRefreshing(false);
   };
 
-  const handleCreateShop = async () => {
-    if (!newShopCode.trim() || !newShopName.trim()) {
+  const handleRequestShop = async () => {
+    if (!reqShopCode.trim() || !reqShopName.trim()) {
       Alert.alert('Missing Fields', 'Please enter a shop code (e.g. SHP03) and shop name.');
       return;
     }
 
-    setCreatingShop(true);
+    setSubmittingRequest(true);
     try {
-      const res = await shopApi.createShop({
-        shop_code: newShopCode.trim().toUpperCase(),
-        name: newShopName.trim(),
-        address: newShopAddress.trim() || undefined,
-        phone: newShopPhone.trim() || undefined,
-        currency_code: user?.business_currency || 'TZS'
+      await shopApi.requestShop({
+        shop_code: reqShopCode.trim().toUpperCase(),
+        name: reqShopName.trim(),
+        address: reqShopAddress.trim() || undefined,
+        phone: reqShopPhone.trim() || undefined,
+        admin_notes: reqAdminNotes.trim() || undefined
       });
 
-      Alert.alert('Shop Created', `Store '${newShopName}' has been added to ${user?.business_name || 'your business'}.`);
-      setNewShopCode('');
-      setNewShopName('');
-      setNewShopAddress('');
-      setNewShopPhone('');
-      setCreateShopModalVisible(false);
-      await refreshShops();
+      Alert.alert(
+        'Request Submitted',
+        `Your request for branch '${reqShopName}' has been submitted to the Super Admin for approval.`
+      );
+      setReqShopCode('');
+      setReqShopName('');
+      setReqShopAddress('');
+      setReqShopPhone('');
+      setReqAdminNotes('');
+      setRequestShopModalVisible(false);
+      await loadData();
     } catch (err: any) {
-      Alert.alert('Creation Failed', err.message || 'Could not create new shop.');
+      Alert.alert('Submission Failed', err.message || 'Could not submit shop request.');
     } finally {
-      setCreatingShop(false);
+      setSubmittingRequest(false);
     }
-  };
-
-  const handleSwitchAndOpenPOS = async (shop: Shop) => {
-    await setActiveShop(shop);
-    router.push('/seller' as any);
   };
 
   return (
     <View style={styles.container}>
       <Header 
-        title="Admin Management" 
+        title="JM Solution POS" 
         subtitle={user?.business_name ? `${user.business_name} (${user.business_code || 'BIZ'})` : 'Store Operations'} 
       />
 
@@ -148,9 +154,9 @@ export default function AdminDashboard() {
             <View style={styles.activeShopBanner}>
               <View style={styles.activeShopLeft}>
                 <Ionicons name="storefront-outline" size={18} color={theme.primary} />
-                <View>
+                <View style={styles.activeShopTextCol}>
                   <Text style={styles.activeShopLabel}>Active Store Context:</Text>
-                  <Text style={styles.activeShopName}>
+                  <Text style={styles.activeShopName} numberOfLines={1} ellipsizeMode="tail">
                     {activeShop ? `${activeShop.name} (${activeShop.shop_code})` : 'No store selected'}
                   </Text>
                 </View>
@@ -158,6 +164,7 @@ export default function AdminDashboard() {
               <TouchableOpacity 
                 style={styles.switchShopBtn} 
                 onPress={() => setShopSelectorVisible(true)}
+                activeOpacity={0.8}
               >
                 <Ionicons name="swap-horizontal" size={14} color="#fff" />
                 <Text style={styles.switchShopBtnText}>Switch</Text>
@@ -168,12 +175,12 @@ export default function AdminDashboard() {
           {/* Quick Action Navigation Grid */}
           <View style={styles.actionGrid}>
             <TouchableOpacity 
-              style={[styles.actionCard, { backgroundColor: 'rgba(16, 185, 129, 0.12)', borderColor: theme.accent }]}
-              onPress={() => router.push('/seller' as any)}
+              style={[styles.actionCard, { backgroundColor: 'rgba(245, 158, 11, 0.12)', borderColor: theme.warning }]}
+              onPress={() => setRequestShopModalVisible(true)}
             >
-              <Ionicons name="barcode" size={26} color={theme.accent} />
-              <Text style={styles.actionTitle}>POS Register</Text>
-              <Text style={styles.actionSub}>Sell in {activeShop?.shop_code || 'Store'}</Text>
+              <Ionicons name="git-pull-request" size={26} color={theme.warning} />
+              <Text style={styles.actionTitle}>Branch Requests</Text>
+              <Text style={styles.actionSub}>{shopRequests.filter(r => r.status === 'pending').length} Pending</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -214,10 +221,10 @@ export default function AdminDashboard() {
 
             <TouchableOpacity 
               style={[styles.actionCard, { backgroundColor: 'rgba(59, 130, 246, 0.12)', borderColor: '#3b82f6' }]}
-              onPress={() => setCreateShopModalVisible(true)}
+              onPress={() => setRequestShopModalVisible(true)}
             >
               <Ionicons name="storefront" size={26} color="#3b82f6" />
-              <Text style={styles.actionTitle}>+ Add Shop</Text>
+              <Text style={styles.actionTitle}>+ Request Store</Text>
               <Text style={styles.actionSub}>New Branch</Text>
             </TouchableOpacity>
           </View>
@@ -227,11 +234,11 @@ export default function AdminDashboard() {
             <View style={styles.sectionTitleRow}>
               <Ionicons name="business-outline" size={20} color={theme.primary} />
               <Text style={styles.sectionTitle}>
-                Business Stores ({availableShops.length})
+                Active Business Stores ({availableShops.length})
               </Text>
             </View>
-            <TouchableOpacity onPress={() => setCreateShopModalVisible(true)}>
-              <Text style={styles.linkText}>+ New Store</Text>
+            <TouchableOpacity onPress={() => setRequestShopModalVisible(true)}>
+              <Text style={styles.linkText}>+ Request Store</Text>
             </TouchableOpacity>
           </View>
 
@@ -251,7 +258,7 @@ export default function AdminDashboard() {
                       <Text style={styles.shopCardName}>{shop.name}</Text>
                       {isActive && (
                         <View style={[styles.activeBadge, { backgroundColor: theme.primary }]}>
-                          <Text style={styles.activeBadgeText}>ACTIVE</Text>
+                          <Text style={styles.activeBadgeText}>ACTIVE CONTEXT</Text>
                         </View>
                       )}
                     </View>
@@ -272,19 +279,87 @@ export default function AdminDashboard() {
                         <Text style={styles.selectShopBtnText}>Select</Text>
                       </TouchableOpacity>
                     ) : (
-                      <TouchableOpacity 
-                        style={[styles.openPosQuickBtn, { backgroundColor: theme.accent }]}
-                        onPress={() => router.push('/seller' as any)}
-                      >
-                        <Ionicons name="cart-outline" size={14} color="#fff" />
-                        <Text style={styles.openPosQuickText}>Register</Text>
-                      </TouchableOpacity>
+                      <View style={[styles.activePill, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                        <Ionicons name="checkmark-circle" size={14} color={theme.accent} />
+                        <Text style={[styles.activePillText, { color: theme.accent }]}>Selected</Text>
+                      </View>
                     )}
                   </View>
                 </View>
               </View>
             );
           })}
+
+          {/* Store Branch Creation Requests Section */}
+          <View style={[styles.sectionHeaderRow, { marginTop: 14 }]}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="git-pull-request-outline" size={20} color={theme.warning} />
+              <Text style={styles.sectionTitle}>
+                Branch Requests ({shopRequests.length})
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setRequestShopModalVisible(true)}>
+              <Text style={styles.linkText}>+ Submit Request</Text>
+            </TouchableOpacity>
+          </View>
+
+          {shopRequests.length === 0 ? (
+            <View style={styles.emptyRequestsBox}>
+              <Ionicons name="document-text-outline" size={24} color={theme.textMuted} />
+              <Text style={styles.emptyRequestsText}>
+                No store requests submitted. Use "+ Request Store" to propose a new branch for Super Admin approval.
+              </Text>
+            </View>
+          ) : (
+            shopRequests.map((req) => {
+              const isPending = req.status === 'pending';
+              const isApproved = req.status === 'approved';
+              const badgeBg = isApproved 
+                ? 'rgba(16, 185, 129, 0.15)' 
+                : isPending 
+                  ? 'rgba(245, 158, 11, 0.15)' 
+                  : 'rgba(239, 68, 68, 0.15)';
+              const badgeText = isApproved ? theme.accent : isPending ? theme.warning : theme.danger;
+              const statusLabel = isApproved ? 'APPROVED & CREATED' : isPending ? 'AWAITING SUPER ADMIN' : 'REJECTED';
+
+              return (
+                <View key={req.id} style={styles.requestCard}>
+                  <View style={styles.requestHeaderRow}>
+                    <View style={styles.requestLeft}>
+                      <Text style={styles.requestName}>{req.name}</Text>
+                      <Text style={styles.requestCode}>Proposed Code: {req.shop_code}</Text>
+                    </View>
+                    <View style={[styles.statusPill, { backgroundColor: badgeBg }]}>
+                      <Text style={[styles.statusPillText, { color: badgeText }]}>{statusLabel}</Text>
+                    </View>
+                  </View>
+
+                  {req.address && (
+                    <Text style={styles.requestMeta}>📍 {req.address}</Text>
+                  )}
+                  {req.phone && (
+                    <Text style={styles.requestMeta}>📞 {req.phone}</Text>
+                  )}
+                  {req.admin_notes && (
+                    <View style={styles.requestNotesBox}>
+                      <Text style={styles.requestNotesLabel}>Admin Note:</Text>
+                      <Text style={styles.requestNotesText}>{req.admin_notes}</Text>
+                    </View>
+                  )}
+                  {req.super_admin_notes && (
+                    <View style={styles.superAdminFeedbackBox}>
+                      <Text style={styles.superAdminFeedbackLabel}>Super Admin Feedback:</Text>
+                      <Text style={styles.superAdminFeedbackText}>{req.super_admin_notes}</Text>
+                    </View>
+                  )}
+                  <Text style={styles.requestDate}>
+                    Requested: {new Date(req.created_at).toLocaleDateString()}
+                    {req.reviewed_at ? ` • Reviewed: ${new Date(req.reviewed_at).toLocaleDateString()}` : ''}
+                  </Text>
+                </View>
+              );
+            })
+          )}
 
           {/* Today's Active Store Summary Card */}
           <View style={[styles.sectionHeaderRow, { marginTop: 14 }]}>
@@ -390,41 +465,41 @@ export default function AdminDashboard() {
         onClose={() => setShopSelectorVisible(false)}
       />
 
-      {/* Create Shop Modal */}
-      <Modal visible={createShopModalVisible} transparent animationType="fade">
+      {/* Request Store Branch Modal */}
+      <Modal visible={requestShopModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleRow}>
                 <Ionicons name="storefront" size={22} color={theme.primary} />
-                <Text style={styles.modalTitle}>Add New Branch Shop</Text>
+                <Text style={styles.modalTitle}>Request Store Branch</Text>
               </View>
-              <TouchableOpacity onPress={() => setCreateShopModalVisible(false)}>
+              <TouchableOpacity onPress={() => setRequestShopModalVisible(false)}>
                 <Ionicons name="close" size={22} color={theme.textMuted} />
               </TouchableOpacity>
             </View>
 
             <Text style={styles.modalSubtitle}>
-              Create a new physical retail shop under {user?.business_name || 'your business'}.
+              Submit a request to open a new retail branch under {user?.business_name || 'your business'}. Super Admin approval is required.
             </Text>
 
-            <Text style={styles.inputLabel}>Shop Code *</Text>
+            <Text style={styles.inputLabel}>Proposed Shop Code *</Text>
             <TextInput
               style={styles.textInput}
               placeholder="e.g. SHP03, ARUSHA01"
               placeholderTextColor={theme.textMuted}
-              value={newShopCode}
-              onChangeText={setNewShopCode}
+              value={reqShopCode}
+              onChangeText={setReqShopCode}
               autoCapitalize="characters"
             />
 
-            <Text style={styles.inputLabel}>Store / Shop Name *</Text>
+            <Text style={styles.inputLabel}>Branch Display Name *</Text>
             <TextInput
               style={styles.textInput}
               placeholder="e.g. Arusha Clock Tower Branch"
               placeholderTextColor={theme.textMuted}
-              value={newShopName}
-              onChangeText={setNewShopName}
+              value={reqShopName}
+              onChangeText={setReqShopName}
             />
 
             <Text style={styles.inputLabel}>Physical Address (Optional)</Text>
@@ -432,8 +507,8 @@ export default function AdminDashboard() {
               style={styles.textInput}
               placeholder="e.g. Clock Tower Roundabout, Arusha"
               placeholderTextColor={theme.textMuted}
-              value={newShopAddress}
-              onChangeText={setNewShopAddress}
+              value={reqShopAddress}
+              onChangeText={setReqShopAddress}
             />
 
             <Text style={styles.inputLabel}>Phone Contact (Optional)</Text>
@@ -441,9 +516,19 @@ export default function AdminDashboard() {
               style={styles.textInput}
               placeholder="e.g. +255 788 123 456"
               placeholderTextColor={theme.textMuted}
-              value={newShopPhone}
-              onChangeText={setNewShopPhone}
+              value={reqShopPhone}
+              onChangeText={setReqShopPhone}
               keyboardType="phone-pad"
+            />
+
+            <Text style={styles.inputLabel}>Justification / Notes for Super Admin</Text>
+            <TextInput
+              style={[styles.textInput, { height: 60, textAlignVertical: 'top' }]}
+              placeholder="e.g. Expanding into Northern zone due to high customer traffic"
+              placeholderTextColor={theme.textMuted}
+              value={reqAdminNotes}
+              onChangeText={setReqAdminNotes}
+              multiline
             />
 
             <View style={styles.currencyNoteBox}>
@@ -456,20 +541,20 @@ export default function AdminDashboard() {
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelBtn}
-                onPress={() => setCreateShopModalVisible(false)}
-                disabled={creatingShop}
+                onPress={() => setRequestShopModalVisible(false)}
+                disabled={submittingRequest}
               >
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.submitBtn, creatingShop && { opacity: 0.6 }]}
-                onPress={handleCreateShop}
-                disabled={creatingShop}
+                style={[styles.submitBtn, submittingRequest && { opacity: 0.6 }]}
+                onPress={handleRequestShop}
+                disabled={submittingRequest}
               >
-                {creatingShop ? (
+                {submittingRequest ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.submitBtnText}>Create Store</Text>
+                  <Text style={styles.submitBtnText}>Submit Request</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -559,14 +644,21 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(99, 102, 241, 0.2)',
     borderRadius: 10,
-    padding: 10,
-    marginTop: 12
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 12,
+    gap: 8
   },
   activeShopLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    flex: 1
+    flex: 1,
+    minWidth: 0
+  },
+  activeShopTextCol: {
+    flex: 1,
+    minWidth: 0
   },
   activeShopLabel: {
     color: theme.textMuted,
@@ -585,7 +677,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     backgroundColor: theme.primary,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8
+    borderRadius: 8,
+    flexShrink: 0
   },
   switchShopBtnText: {
     color: '#fff',
@@ -715,18 +808,115 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 12,
     fontWeight: '600'
   },
-  openPosQuickBtn: {
+  activePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 6
   },
-  openPosQuickText: {
-    color: '#fff',
+  activePillText: {
     fontSize: 12,
     fontWeight: '700'
+  },
+  emptyRequestsBox: {
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder,
+    borderRadius: theme.radius.md,
+    padding: 16,
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14
+  },
+  emptyRequestsText: {
+    color: theme.textMuted,
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18
+  },
+  requestCard: {
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder,
+    borderRadius: theme.radius.md,
+    padding: 14,
+    marginBottom: 10
+  },
+  requestHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 6
+  },
+  requestLeft: {
+    flex: 1,
+    paddingRight: 8
+  },
+  requestName: {
+    color: theme.text,
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  requestCode: {
+    color: theme.primary,
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2
+  },
+  statusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '800'
+  },
+  requestMeta: {
+    color: theme.textSecondary,
+    fontSize: 11,
+    marginTop: 3
+  },
+  requestNotesBox: {
+    backgroundColor: 'rgba(99, 102, 241, 0.05)',
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 6
+  },
+  requestNotesLabel: {
+    color: theme.primary,
+    fontSize: 10,
+    fontWeight: '700'
+  },
+  requestNotesText: {
+    color: theme.text,
+    fontSize: 11,
+    marginTop: 2
+  },
+  superAdminFeedbackBox: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderLeftWidth: 3,
+    borderLeftColor: theme.warning,
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 6
+  },
+  superAdminFeedbackLabel: {
+    color: theme.warning,
+    fontSize: 10,
+    fontWeight: '700'
+  },
+  superAdminFeedbackText: {
+    color: theme.text,
+    fontSize: 11,
+    marginTop: 2
+  },
+  requestDate: {
+    color: theme.textMuted,
+    fontSize: 10,
+    marginTop: 6
   },
   metricsCard: {
     backgroundColor: theme.surface,

@@ -207,7 +207,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontFamily: 'monospace'
   },
   amountText: {
-    color: theme.accent,
+    color: theme.isDark ? '#34D399' : theme.accent,
     fontSize: 16,
     fontWeight: '800'
   },

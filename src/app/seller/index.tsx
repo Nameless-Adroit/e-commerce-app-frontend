@@ -104,8 +104,8 @@ export default function SellerCounterScreen() {
   return (
     <View style={styles.container}>
       <Header
-        title="POS Counter"
-        subtitle="Barcode scan & quick-add shelf counter"
+        title="JM Solution POS"
+        subtitle={activeShop ? `${activeShop.name} • Retail & POS Counter` : 'Retail and POS Counter'}
         rightAction={
           <TouchableOpacity onPress={() => router.push('/seller/cart' as any)} style={styles.cartIconBtn}>
             <Ionicons name="cart-outline" size={20} color={theme.text} />
@@ -190,7 +190,7 @@ export default function SellerCounterScreen() {
           <View style={styles.topSellerCard}>
             <View style={styles.topSellerHeader}>
               <View style={styles.flameBadge}>
-                <Ionicons name="flame" size={15} color="#D97706" />
+                <Ionicons name="flame" size={15} color={theme.isDark ? '#F59E0B' : '#D97706'} />
                 <Text style={styles.flameBadgeText}>#1 TOP SELLING PRODUCT</Text>
               </View>
               <Text style={styles.unitsSoldBadge}>
@@ -497,10 +497,10 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontWeight: '700'
   },
   topSellerCard: {
-    backgroundColor: theme.mode === 'dark' ? '#1E1B13' : '#FFFBEB',
+    backgroundColor: theme.isDark ? 'rgba(245, 158, 11, 0.12)' : '#FFFBEB',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: theme.mode === 'dark' ? '#78350F' : '#FDE68A',
+    borderColor: theme.isDark ? 'rgba(245, 158, 11, 0.35)' : '#FDE68A',
     padding: 14,
     marginBottom: 14
   },
@@ -518,12 +518,12 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   flameBadgeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: theme.mode === 'dark' ? '#F59E0B' : '#B45309'
+    color: theme.isDark ? '#F59E0B' : '#B45309'
   },
   unitsSoldBadge: {
     fontSize: 11,
     fontWeight: '600',
-    color: theme.mode === 'dark' ? '#FBBF24' : '#92400E'
+    color: theme.isDark ? '#FBBF24' : '#92400E'
   },
   topSellerBody: {
     flexDirection: 'row',
@@ -537,11 +537,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   topSellerName: {
     fontSize: 14,
     fontWeight: '700',
-    color: theme.mode === 'dark' ? '#FEF3C7' : '#78350F'
+    color: theme.isDark ? '#F8FAFC' : '#78350F'
   },
   topSellerId: {
     fontSize: 11,
-    color: theme.mode === 'dark' ? '#FDE68A' : '#92400E',
+    color: theme.isDark ? '#94A3B8' : '#92400E',
     marginTop: 2
   },
   topSellerMetrics: {
@@ -552,11 +552,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   topSellerPrice: {
     fontSize: 14,
     fontWeight: '700',
-    color: theme.accent
+    color: theme.isDark ? '#34D399' : theme.accent
   },
   topSellerStock: {
     fontSize: 12,
-    color: theme.secondary,
+    color: theme.isDark ? '#38BDF8' : theme.secondary,
     fontWeight: '600'
   },
   quickAddBtn: {
@@ -675,7 +675,7 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   productPrice: {
     fontSize: 14,
     fontWeight: '700',
-    color: theme.accent
+    color: theme.isDark ? '#34D399' : theme.accent
   },
   productStock: {
     fontSize: 11,

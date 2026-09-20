@@ -1,4 +1,4 @@
-# 🏪 Apex POS & Retail — Mobile & Web Application
+# 🏪 JM Solution POS — Mobile & Web Application
 
 A modern, high-speed, cross-platform **Point of Sale (POS), Inventory & Retail Management** client built with **React Native**, **Expo Router**, and **TypeScript**. Supports Android, iOS, and Modern Web browsers.
 
@@ -6,9 +6,9 @@ A modern, high-speed, cross-platform **Point of Sale (POS), Inventory & Retail M
 
 ## 📖 1. System Overview
 
-Apex POS & Retail provides an end-to-end retail management experience for single-store and multi-tenant retail businesses:
+JM Solution POS provides an end-to-end retail management experience for single-store and multi-tenant retail businesses:
 - **High-Velocity POS Floor Operations**: Instant barcode and unique product ID search, cart management, subtotal discounts, custom price overrides, and receipt generation with real-time stock deduction.
-- **Unified Single Login**: No manual role picking or tab switching. Users input their credentials (**Phone Number & PIN** for staff, or **Username & Password** for Super Admin). The system automatically authorizes their role and opens their assigned dashboard.
+- **Unified Single Login**: No manual role picking or tab switching. Users input their credentials (**Phone Number & 6-Digit PIN** for all roles: Super Admin, Shop Admin, and POS Seller). The system automatically authorizes their role and opens their assigned dashboard.
 - **Zero-Trust Security**: 15-minute access tokens held strictly in application volatile memory (RAM), paired with 7-day secure HTTP-only refresh cookies.
 - **Adaptive Light & Dark Themes**: Crisp daylight mode and high-contrast midnight slate mode with automatic device synchronization.
 
@@ -93,17 +93,18 @@ Once the terminal menu appears:
 
 ---
 
-## 🔑 4. Default Seed Accounts for Testing
+## 🔑 4. Chosen Seed Credentials for Testing
 
-Use these pre-configured accounts to explore the different role portals:
+Authentication strictly requires a **Phone Number** and a **6-Digit PIN** for all users:
 
-| Role | Phone Number | PIN / Password | Assigned Store | Redirection Portal |
-| :--- | :--- | :--- | :--- | :--- |
-| **POS Seller** | `0754 123 456` | `1234` | Downtown Tech & Gadgets | `/seller` |
-| **Shop Admin** | `0754 222 333` | `1234` | Downtown Tech & Gadgets | `/admin` |
-| **Super Admin** | `superadmin` | `SuperAdmin123!` | Global Platform | `/super-admin` |
-
-*(Note: The Super Admin can also log in using Phone `0700 000 001` and PIN `1234`).*
+| Role | User / Full Name | Phone Number (Local) | Phone Number (E.164) | 6-Digit PIN | Assigned Store / Scope | Portal |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Super Admin** | Alexander Cross (`superadmin`) | `0700 000 001` | `+255700000001` | `123456` | Platform Overseer | `/super-admin` |
+| **Shop Admin 1** | Marcus Vance (`admin_tech`) | `0712 100 001` | `+255712100001` | `123456` | Kariakoo Tech Hub | `/admin` |
+| **Shop Admin 2** | Elena Rostova (`admin_metro`) | `0712 100 002` | `+255712100002` | `123456` | Mlimani Boutique | `/admin` |
+| **POS Seller 1** | Alice Morgan (`seller_alice`) | `0712 200 001` | `+255712200001` | `123456` | Kariakoo Tech Hub | `/seller` |
+| **POS Seller 2** | Bob Kendrick (`seller_bob`) | `0712 200 002` | `+255712200002` | `123456` | Kariakoo Tech Hub | `/seller` |
+| **POS Seller 3** | Charlie Dupont (`seller_charlie`) | `0712 200 003` | `+255712200003` | `123456` | Mlimani Boutique | `/seller` |
 
 ---
 
@@ -114,7 +115,7 @@ e-commerce-app/
 ├── assets/             # Logos, app icons, and splash screen images
 ├── src/
 │   ├── app/            # Expo Router file-based screen navigation
-│   │   ├── index.tsx   # Unified single login screen
+│   │   ├── index.tsx   # Unified single login screen (Phone + 6-digit PIN)
 │   │   ├── seller/     # POS checkout, cart, and sales history screens
 │   │   ├── admin/      # Product inventory, restocking, and reports
 │   │   └── super-admin/# Multi-tenant business and user management
@@ -129,21 +130,3 @@ e-commerce-app/
 ├── eas.json            # Expo Application Services (EAS) cloud build & OTA profiles
 └── package.json        # Dependencies and build scripts
 ```
-
----
-
-## 🚢 6. Shipping & Deployment
-
-- **Over-The-Air (OTA) Updates**:
-  Deploy instant updates directly to installed mobile APKs without reinstalling:
-  ```bash
-  npx eas-cli update --branch preview --message "Release description"
-  ```
-- **Generate Standalone Android APK**:
-  Build a fresh, installable `.apk` file:
-  ```bash
-  npx eas-cli build -p android --profile preview
-  ```
-
-> [!TIP]
-> For complete chronological deployment logs, server firewall details, and DirectAdmin configuration, refer to [`DEPLOYMENT_AND_ROADMAP_GUIDE.md`](../DEPLOYMENT_AND_ROADMAP_GUIDE.md) in the project root directory.

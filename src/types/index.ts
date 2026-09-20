@@ -35,6 +35,7 @@ export interface User {
   shop_currency?: string | null;
   shop_currency_symbol?: string | null;
   shop_currency_name?: string | null;
+  temporary_pin?: boolean;
   temporary_password?: boolean;
   requires_pin_setup?: boolean;
   is_active?: boolean;
@@ -67,6 +68,28 @@ export interface Shop {
   staff_count?: number;
   product_count?: number;
   total_units_in_stock?: number;
+}
+
+export interface ShopRequest {
+  id: number;
+  business_id: number;
+  business_name?: string;
+  business_code?: string;
+  requested_by_user_id: number;
+  requested_by_name?: string;
+  requested_by_phone?: string;
+  shop_code: string;
+  name: string;
+  address?: string | null;
+  phone?: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  admin_notes?: string | null;
+  super_admin_notes?: string | null;
+  reviewed_by_user_id?: number | null;
+  reviewed_by_name?: string | null;
+  created_shop_id?: number | null;
+  created_at: string;
+  reviewed_at?: string | null;
 }
 
 export interface Product {

@@ -151,26 +151,6 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
               )}
             </View>
 
-            {/* Security & Active Session */}
-            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SECURITY & SESSION</Text>
-            <View style={[styles.infoCard, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]}>
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Session Architecture:</Text>
-                <View style={styles.statusOnline}>
-                  <View style={styles.statusDot} />
-                  <Text style={[styles.statusText, { color: '#10B981' }]}>Secure Dual-Token</Text>
-                </View>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Access Lifetime:</Text>
-                <Text style={[styles.infoValue, { color: theme.text }]}>15 Minutes (In-Memory)</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Refresh Lifetime:</Text>
-                <Text style={[styles.infoValue, { color: theme.text }]}>7 Days (HTTP-Only Cookie)</Text>
-              </View>
-            </View>
-
             {/* Application & Server Information */}
             <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>APPLICATION DETAILS</Text>
             <View style={[styles.infoCard, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]}>
@@ -180,29 +160,16 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
                   v{Constants.expoConfig?.version || '2.0.0'} (Build {Constants.expoConfig?.android?.versionCode || 4})
                 </Text>
               </View>
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Build Type:</Text>
-                <Text style={[styles.infoValue, { color: theme.text }]}>Standalone Release APK</Text>
-              </View>
             </View>
 
-            {/* Logout Actions */}
+            {/* Logout Action */}
             <TouchableOpacity
-              style={[styles.signOutBtn, { borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}
+              style={[styles.signOutBtn, { borderColor: 'rgba(239, 68, 68, 0.4)', backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
               onPress={handleSignOut}
               activeOpacity={0.8}
             >
               <Ionicons name="log-out-outline" size={18} color={theme.danger} />
-              <Text style={[styles.signOutText, { color: theme.danger }]}>Sign Out of This Device</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.signOutBtn, { borderColor: 'rgba(239, 68, 68, 0.5)', backgroundColor: 'rgba(239, 68, 68, 0.15)', marginTop: 0 }]}
-              onPress={handleSignOutAll}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="shield-outline" size={18} color={theme.danger} />
-              <Text style={[styles.signOutText, { color: theme.danger }]}>Sign Out of All Devices Everywhere</Text>
+              <Text style={[styles.signOutText, { color: theme.danger }]}>Sign Out</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>

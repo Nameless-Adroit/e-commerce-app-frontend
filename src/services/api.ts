@@ -11,6 +11,7 @@ import {
   DailyReport, 
   GlobalSummary, 
   Shop,
+  ShopRequest,
   Business,
   ReturnPayload,
   ReturnResponse,
@@ -145,18 +146,22 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
         } catch (refreshErr) {
           isRefreshing = false;
           await setAuthToken(null);
-          onRefreshed(null, refreshErr);
+          const sessionErr = new Error('Session expired. Please sign in again.');
+          (sessionErr as any).statusCode = 401;
+          onRefreshed(null, sessionErr);
           if (onSessionExpiredCallback) {
             onSessionExpiredCallback();
           }
-          throw new Error('Session expired. Please sign in again.');
+          throw sessionErr;
         }
       } else {
         // Another request is already refreshing the token. Queue this request until resolved.
         return new Promise<T>((resolve, reject) => {
           subscribeTokenRefresh((newToken, refreshErr) => {
             if (refreshErr || !newToken) {
-              return reject(refreshErr || new Error('Session expired. Please sign in again.'));
+              const sessionErr = new Error('Session expired. Please sign in again.');
+              (sessionErr as any).statusCode = 401;
+              return reject(sessionErr);
             }
             headers['Authorization'] = `Bearer ${newToken}`;
             resolve(request<T>(endpoint, { ...options, headers }));
@@ -171,10 +176,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       : null;
 
     if (!response.ok) {
-      if (response.status >= 500) {
-        throw new Error('Store service is temporarily unavailable. Please try again in a few moments.');
-      }
-      const errorMsg = json?.message || 'The requested operation could not be completed. Please try again.';
+      const errorMsg = json?.message || (response.status >= 500
+        ? 'Store service is temporarily unavailable. Please try again in a few moments.'
+        : 'The requested operation could not be completed. Please try again.');
       const err = new Error(errorMsg);
       (err as any).statusCode = response.status;
       (err as any).response = json;
@@ -208,13 +212,13 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 // -----------------------------------------------------------------------------
 export const authApi = {
   /**
-   * Unified login supporting Phone + PIN (Staff) or Username + Password (Super Admin)
+   * Phone Number + 6-Digit PIN Authentication
    */
   async login(credentials: {
     phoneNumber?: string;
     pin?: string;
     identifier?: string;
-    password?: string;
+    secret?: string;
     deviceName?: string;
   }): Promise<ApiResponse<{ token: string; redirect_url: string; user: User; sessionId: string }>> {
     const res = await request<ApiResponse<{ token: string; redirect_url: string; user: User; sessionId: string }>>('/auth/login', {
@@ -231,13 +235,23 @@ export const authApi = {
    * Rotates refresh token via HTTP-only cookie and obtains fresh 15-minute access token
    */
   async refresh(): Promise<ApiResponse<{ token: string; sessionId: string }>> {
-    const res = await request<ApiResponse<{ token: string; sessionId: string }>>('/auth/refresh', {
-      method: 'POST'
-    });
-    if (res.data?.token) {
-      await setAuthToken(res.data.token);
+    try {
+      const res = await request<ApiResponse<{ token: string; sessionId: string }>>('/auth/refresh', {
+        method: 'POST'
+      });
+      if (res.data?.token) {
+        await setAuthToken(res.data.token);
+      }
+      return res;
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      if (msg.includes('refresh token') || err?.statusCode === 401) {
+        const cleanErr = new Error('Session expired. Please sign in again.');
+        (cleanErr as any).statusCode = 401;
+        throw cleanErr;
+      }
+      throw err;
     }
-    return res;
   },
 
   /**
@@ -579,6 +593,38 @@ export const shopApi = {
 
   async getShopById(id: number): Promise<ApiResponse<Shop & { staff: User[]; stats: any }>> {
     return request<ApiResponse<Shop & { staff: User[]; stats: any }>>(`/shops/${id}`);
+  },
+
+  async requestShop(data: {
+    shop_code: string;
+    name: string;
+    address?: string;
+    phone?: string;
+    admin_notes?: string;
+  }): Promise<ApiResponse<ShopRequest>> {
+    return request<ApiResponse<ShopRequest>>('/shops/requests', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async getShopRequests(status?: string): Promise<ApiResponse<{ requests: ShopRequest[] }>> {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    return request<ApiResponse<{ requests: ShopRequest[] }>>(`/shops/requests${qs}`);
+  },
+
+  async approveShopRequest(id: number, super_admin_notes?: string): Promise<ApiResponse<{ message: string; shop_id: number; request_id: number }>> {
+    return request<ApiResponse<{ message: string; shop_id: number; request_id: number }>>(`/shops/requests/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ super_admin_notes })
+    });
+  },
+
+  async rejectShopRequest(id: number, super_admin_notes?: string): Promise<ApiResponse<{ message: string; request_id: number }>> {
+    return request<ApiResponse<{ message: string; request_id: number }>>(`/shops/requests/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ super_admin_notes })
+    });
   }
 };
 

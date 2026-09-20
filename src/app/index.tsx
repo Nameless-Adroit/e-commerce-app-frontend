@@ -9,7 +9,10 @@ import {
   Platform, 
   ActivityIndicator, 
   Alert, 
-  ScrollView
+  ScrollView,
+  Image,
+  TouchableWithoutFeedback,
+  Keyboard
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -28,30 +31,38 @@ export default function LoginScreen() {
 
   // Live detection of Tanzanian mobile operator
   const detectedOperator = getPhoneOperatorName(identifier);
-  const isPhoneInput = Boolean(detectedOperator || /^(\+?255|0)[67]/.test(identifier.replace(/\s+/g, '')));
 
   const handleIdentifierChange = (val: string) => {
-    if (/^\+?\d[\d\s-]*$/.test(val)) {
-      setIdentifier(formatPhoneNumber(val));
-    } else {
-      setIdentifier(val);
-    }
+    // Only allow digits, +, spaces, and hyphens for phone number
+    const sanitized = val.replace(/[^\d+\s-]/g, '');
+    setIdentifier(formatPhoneNumber(sanitized));
+  };
+
+  const handleSecretChange = (val: string) => {
+    // Strictly numeric PIN, max 6 digits
+    const numeric = val.replace(/\D/g, '').slice(0, 6);
+    setSecret(numeric);
   };
 
   const handleLogin = async () => {
-    const cleanId = identifier.trim();
-    const cleanSecret = secret.trim();
+    const cleanPhone = identifier.trim();
+    const cleanPin = secret.trim();
 
-    if (!cleanId || !cleanSecret) {
-      Alert.alert('Missing Credentials', 'Please enter your phone number and PIN.');
+    if (!cleanPhone) {
+      Alert.alert('Missing Phone Number', 'Please enter your registered phone number.');
+      return;
+    }
+
+    if (!cleanPin || cleanPin.length !== 6) {
+      Alert.alert('Invalid PIN', 'Please enter your 6-digit numeric PIN.');
       return;
     }
 
     setLoading(true);
     try {
-      await login(cleanId, cleanSecret);
+      await login(cleanPhone, cleanPin);
     } catch (err: any) {
-      Alert.alert('Authentication Failed', err.message || 'Invalid credentials or server unavailable.');
+      Alert.alert('Sign In Failed', err.message || 'Invalid credentials or server unavailable.');
     } finally {
       setLoading(false);
     }
@@ -59,13 +70,14 @@ export default function LoginScreen() {
 
   // Dynamic Theme Colors for Input Surfaces
   const inputBg = theme.isDark ? '#0F172A' : '#F8FAFC';
-  const defaultBorder = theme.isDark ? '#27354A' : '#CBD5E1';
+  const defaultBorder = theme.isDark ? '#334155' : '#CBD5E1';
   const activeBorder = theme.primary;
 
   return (
     <KeyboardAvoidingView 
       style={[styles.container, { backgroundColor: theme.background }]} 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       {/* Web Autofill and CSS Input Reset */}
       {Platform.OS === 'web' && (
@@ -92,21 +104,30 @@ export default function LoginScreen() {
         />
       )}
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Top Branding */}
         <View style={styles.brandContainer}>
-          <View style={[styles.logoBadge, { backgroundColor: theme.primaryLight, borderColor: theme.primary }]}>
-            <Ionicons name="storefront" size={38} color={theme.primary} />
+          <View style={styles.logoBadge}>
+            <Image 
+              source={require('../../assets/images/jmsolutions.png')} 
+              style={styles.logoImage} 
+              resizeMode="cover" 
+            />
           </View>
-          <Text style={[styles.appTitle, { color: theme.text }]}>Apex POS & Retail</Text>
-          <Text style={[styles.appSubtitle, { color: theme.textSecondary }]}>Enterprise Point of Sale & Inventory Platform</Text>
+          <Text style={[styles.appTitle, { color: theme.text }]}>JM Solution POS</Text>
+          <Text style={[styles.appSubtitle, { color: theme.textSecondary }]}>Retail and POS</Text>
         </View>
 
         {/* Single Unified Login Form Card */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
           <Text style={[styles.formTitle, { color: theme.text }]}>Sign In to Continue</Text>
           <Text style={[styles.formDesc, { color: theme.textSecondary }]}>
-            Enter your credentials to access your store
+            Enter your phone number and 6-digit PIN to access your store
           </Text>
 
           {/* Field 1: Phone Number */}
@@ -130,14 +151,10 @@ export default function LoginScreen() {
               }
             ]}
           >
-            {isPhoneInput ? (
-              <Text style={styles.flagIcon}>🇹🇿</Text>
-            ) : (
-              <Ionicons name="call-outline" size={18} color={focusedField === 'id' ? theme.primary : theme.textMuted} style={styles.inputIcon} />
-            )}
+            <Text style={styles.flagIcon}>🇹🇿</Text>
             <TextInput
               style={[styles.input, { color: theme.text }]}
-              placeholder="0712 345 678"
+              placeholder="0712 100 001"
               placeholderTextColor={theme.textMuted}
               value={identifier}
               onChangeText={handleIdentifierChange}
@@ -145,7 +162,7 @@ export default function LoginScreen() {
               onBlur={() => setFocusedField(null)}
               autoCapitalize="none"
               autoCorrect={false}
-              keyboardType={isPhoneInput ? 'phone-pad' : 'default'}
+              keyboardType="phone-pad"
               returnKeyType="next"
             />
             {identifier.length > 0 && (
@@ -177,15 +194,16 @@ export default function LoginScreen() {
             />
             <TextInput
               style={[styles.input, { color: theme.text }]}
-              placeholder="••••"
+              placeholder="••••••"
               placeholderTextColor={theme.textMuted}
               secureTextEntry={!showSecret}
               value={secret}
-              onChangeText={setSecret}
+              onChangeText={handleSecretChange}
               onFocus={() => setFocusedField('secret')}
               onBlur={() => setFocusedField(null)}
               autoCapitalize="none"
-              keyboardType={isPhoneInput ? 'number-pad' : 'default'}
+              keyboardType="number-pad"
+              maxLength={6}
               onSubmitEditing={handleLogin}
               returnKeyType="done"
             />
@@ -211,7 +229,8 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
@@ -230,23 +249,37 @@ const styles = StyleSheet.create({
     marginBottom: 24
   },
   logoBadge: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    borderWidth: 1,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 14
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 48,
+    transform: [{ scale: 1.05 }]
   },
   appTitle: {
     fontSize: 26,
     fontWeight: '800',
-    letterSpacing: -0.5
+    letterSpacing: 0.2
   },
   appSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: '600',
     marginTop: 4,
-    textAlign: 'center'
+    textAlign: 'center',
+    letterSpacing: 0.3
   },
   card: {
     borderWidth: 1,

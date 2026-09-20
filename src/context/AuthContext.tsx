@@ -147,32 +147,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!user && inAuthGroup) {
       router.replace('/' as any);
-    } else if (user && !inAuthGroup) {
-      if (user.role === 'super_admin') {
-        router.replace('/super-admin' as any);
-      } else if (user.role === 'admin') {
-        router.replace('/admin' as any);
-      } else if (user.role === 'seller') {
-        router.replace('/seller' as any);
+    } else if (user) {
+      if (!inAuthGroup) {
+        if (user.role === 'super_admin') {
+          router.replace('/super-admin' as any);
+        } else if (user.role === 'admin') {
+          router.replace('/admin' as any);
+        } else if (user.role === 'seller') {
+          router.replace('/seller' as any);
+        }
+      } else {
+        // Enforce strict role boundaries:
+        // Admin is restricted to reports/management in /admin and CANNOT access /seller (POS)
+        if (user.role === 'admin' && (firstSegment === 'seller' || firstSegment === 'super-admin')) {
+          router.replace('/admin' as any);
+        } else if (user.role === 'seller' && (firstSegment === 'admin' || firstSegment === 'super-admin')) {
+          router.replace('/seller' as any);
+        } else if (user.role === 'super_admin' && firstSegment === 'seller') {
+          router.replace('/super-admin' as any);
+        }
       }
     }
   }, [user, segments, isLoading, router]);
 
   /**
-   * Unified login supporting Phone+PIN or Username+Password
+   * Single authentication handler (Phone Number + 6-digit PIN)
    */
-  const login = async (credentials: LoginParams | string, maybePassword?: string): Promise<string> => {
+  const login = async (credentials: LoginParams | string, maybePin?: string): Promise<string> => {
     setIsLoading(true);
     try {
       let payload: LoginParams;
       if (typeof credentials === 'string') {
-        // Legacy call format: login(identifier, password)
-        // Detect if identifier looks like a phone number
-        if (/^(\+?255|0)[67]\d{8}$/.test(credentials.replace(/\s+/g, ''))) {
-          payload = { phoneNumber: credentials, pin: maybePassword };
-        } else {
-          payload = { identifier: credentials, password: maybePassword };
-        }
+        payload = { phoneNumber: credentials, pin: maybePin };
       } else {
         payload = credentials;
       }

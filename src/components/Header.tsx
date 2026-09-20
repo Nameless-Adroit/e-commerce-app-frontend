@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, Alert, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -11,13 +11,13 @@ import { ShopSelectorModal } from './ShopSelectorModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
 
 interface HeaderProps {
-  title: string;
+  title?: string;
   subtitle?: string;
   showBack?: boolean;
   rightAction?: React.ReactNode;
 }
 
-export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) {
+export function Header({ title = 'JM Solution POS', subtitle, showBack, rightAction }: HeaderProps) {
   const { user, logout, activeShop, availableShops } = useAuth();
   const { theme } = useTheme();
   const router = useRouter();
@@ -81,7 +81,7 @@ export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) 
       >
         <View style={styles.container}>
           <View style={styles.leftCol}>
-            {showBack && (
+            {showBack ? (
               <TouchableOpacity 
                 onPress={() => router.back()} 
                 style={[styles.backBtn, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]} 
@@ -89,6 +89,14 @@ export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) 
               >
                 <Ionicons name="chevron-back" size={20} color={theme.text} />
               </TouchableOpacity>
+            ) : (
+              <View style={styles.headerLogoContainer}>
+                <Image 
+                  source={require('../../assets/images/jmsolutions.png')} 
+                  style={styles.headerLogo} 
+                  resizeMode="cover" 
+                />
+              </View>
             )}
             <View style={styles.titleWrapper}>
               <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>{title}</Text>
@@ -144,9 +152,9 @@ export function Header({ title, subtitle, showBack, rightAction }: HeaderProps) 
       {/* Admin Shop Selector Modal */}
       <ShopSelectorModal visible={shopSelectorOpen} onClose={() => setShopSelectorOpen(false)} />
 
-      {/* Mandatory Password Change Modal for Admins with temporary credentials */}
+      {/* Mandatory PIN Change Modal for users with temporary credentials */}
       <ChangePasswordModal
-        visible={Boolean(user?.temporary_password)}
+        visible={Boolean(user?.temporary_pin ?? user?.temporary_password)}
         onClose={() => {}}
         isForced={true}
       />
@@ -181,6 +189,21 @@ const styles = StyleSheet.create({
   },
   titleWrapper: {
     flex: 1
+  },
+  headerLogoContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF'
+  },
+  headerLogo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 18,
+    transform: [{ scale: 1.05 }]
   },
   backBtn: {
     padding: 7,

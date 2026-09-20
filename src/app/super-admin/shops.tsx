@@ -15,19 +15,29 @@ import { Header } from '../../components/Header';
 import { shopApi, businessApi } from '../../services/api';
 import { useTheme, useStyles } from '../../context/ThemeContext';
 import { AppTheme } from '../../theme/colors';
-import { Shop, Business } from '../../types';
+import { Shop, Business, ShopRequest } from '../../types';
 import { SUPPORTED_CURRENCIES } from '../../utils/currency';
 
 export default function SuperAdminShops() {
   const { theme } = useTheme();
   const styles = useStyles(createStyles);
+  const [activeTab, setActiveTab] = useState<'ACTIVE_SHOPS' | 'REQUESTS'>('ACTIVE_SHOPS');
   const [shops, setShops] = useState<Shop[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [shopRequests, setShopRequests] = useState<ShopRequest[]>([]);
   const [selectedBusinessFilter, setSelectedBusinessFilter] = useState<string>('ALL');
+  const [selectedRequestStatusFilter, setSelectedRequestStatusFilter] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Form state for creating new shop
+  // Review Modal state
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<ShopRequest | null>(null);
+  const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
+  const [superAdminNotes, setSuperAdminNotes] = useState('');
+  const [processingReview, setProcessingReview] = useState(false);
+
+  // Form state for direct creating new shop
   const [selectedBusinessId, setSelectedBusinessId] = useState<number | undefined>(undefined);
   const [shopCode, setShopCode] = useState('');
   const [name, setName] = useState('');
@@ -38,9 +48,10 @@ export default function SuperAdminShops() {
 
   const loadData = async () => {
     try {
-      const [shopsRes, bizRes] = await Promise.all([
+      const [shopsRes, bizRes, reqsRes] = await Promise.all([
         shopApi.getAllShops(),
-        businessApi.getAllBusinesses()
+        businessApi.getAllBusinesses(),
+        shopApi.getShopRequests()
       ]);
 
       if (shopsRes.data?.shops) {
@@ -53,6 +64,9 @@ export default function SuperAdminShops() {
           setSelectedBusinessId((prev) => prev ?? bizList[0].id);
         }
       }
+      if (reqsRes.data?.requests) {
+        setShopRequests(reqsRes.data.requests);
+      }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to load shop directory');
     } finally {
@@ -64,9 +78,15 @@ export default function SuperAdminShops() {
     loadData();
   }, []);
 
+  const pendingRequestsCount = shopRequests.filter(r => r.status === 'pending').length;
+
   const filteredShops = selectedBusinessFilter === 'ALL'
     ? shops
     : shops.filter((s) => String(s.business_id) === selectedBusinessFilter);
+
+  const filteredRequests = selectedRequestStatusFilter === 'ALL'
+    ? shopRequests
+    : shopRequests.filter((r) => r.status === selectedRequestStatusFilter);
 
   const handleCreateShop = async () => {
     if (!shopCode.trim() || !name.trim()) {
@@ -106,6 +126,33 @@ export default function SuperAdminShops() {
     }
   };
 
+  const openReviewModal = (req: ShopRequest, action: 'approve' | 'reject') => {
+    setSelectedRequest(req);
+    setReviewAction(action);
+    setSuperAdminNotes('');
+    setReviewModalVisible(true);
+  };
+
+  const handleProcessReview = async () => {
+    if (!selectedRequest) return;
+    setProcessingReview(true);
+    try {
+      if (reviewAction === 'approve') {
+        const res = await shopApi.approveShopRequest(selectedRequest.id, superAdminNotes.trim() || undefined);
+        Alert.alert('Request Approved', res.message || `Store '${selectedRequest.name}' is now active!`);
+      } else {
+        const res = await shopApi.rejectShopRequest(selectedRequest.id, superAdminNotes.trim() || undefined);
+        Alert.alert('Request Rejected', res.message || 'Store request has been rejected.');
+      }
+      setReviewModalVisible(false);
+      await loadData();
+    } catch (err: any) {
+      Alert.alert('Review Action Failed', err.message || 'Error occurred while reviewing request.');
+    } finally {
+      setProcessingReview(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Header 
@@ -119,11 +166,47 @@ export default function SuperAdminShops() {
         }
       />
 
+      {/* Top Navigation Tabs */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'ACTIVE_SHOPS' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('ACTIVE_SHOPS')}
+        >
+          <Ionicons 
+            name="storefront" 
+            size={16} 
+            color={activeTab === 'ACTIVE_SHOPS' ? theme.primary : theme.textSecondary} 
+          />
+          <Text style={[styles.tabBtnText, activeTab === 'ACTIVE_SHOPS' && styles.tabBtnTextActive]}>
+            Active Stores ({shops.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'REQUESTS' && styles.tabBtnActive]}
+          onPress={() => setActiveTab('REQUESTS')}
+        >
+          <Ionicons 
+            name="git-pull-request" 
+            size={16} 
+            color={activeTab === 'REQUESTS' ? theme.primary : theme.textSecondary} 
+          />
+          <Text style={[styles.tabBtnText, activeTab === 'REQUESTS' && styles.tabBtnTextActive]}>
+            Store Requests
+          </Text>
+          {pendingRequestsCount > 0 && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>{pendingRequestsCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
-      ) : (
+      ) : activeTab === 'ACTIVE_SHOPS' ? (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
           {/* Business Filter Chips */}
           <View style={styles.filterSection}>
@@ -221,7 +304,189 @@ export default function SuperAdminShops() {
             </View>
           )}
         </ScrollView>
+      ) : (
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+          {/* Status Filter Chips */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>Filter by Status:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
+              {[
+                { key: 'ALL', label: `All Requests (${shopRequests.length})` },
+                { key: 'pending', label: `Pending (${shopRequests.filter(r => r.status === 'pending').length})` },
+                { key: 'approved', label: `Approved (${shopRequests.filter(r => r.status === 'approved').length})` },
+                { key: 'rejected', label: `Rejected (${shopRequests.filter(r => r.status === 'rejected').length})` }
+              ].map((filter) => {
+                const isSelected = selectedRequestStatusFilter === filter.key;
+                return (
+                  <TouchableOpacity
+                    key={filter.key}
+                    style={[styles.filterChip, isSelected && styles.filterChipActive]}
+                    onPress={() => setSelectedRequestStatusFilter(filter.key)}
+                  >
+                    <Text style={[styles.filterChipText, isSelected && styles.filterChipTextActive]}>
+                      {filter.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {filteredRequests.map((req) => {
+            const isPending = req.status === 'pending';
+            const isApproved = req.status === 'approved';
+            const badgeBg = isApproved 
+              ? 'rgba(16, 185, 129, 0.15)' 
+              : isPending 
+                ? 'rgba(245, 158, 11, 0.15)' 
+                : 'rgba(239, 68, 68, 0.15)';
+            const badgeText = isApproved ? theme.accent : isPending ? theme.warning : theme.danger;
+            const statusLabel = isApproved ? 'APPROVED' : isPending ? 'PENDING REVIEW' : 'REJECTED';
+
+            return (
+              <View key={req.id} style={styles.requestCard}>
+                <View style={styles.requestCardHeader}>
+                  <View style={styles.requestTitleBox}>
+                    <Text style={styles.requestTitle}>{req.name}</Text>
+                    <View style={styles.requestMetaHeaderRow}>
+                      <Text style={styles.requestCodeBadge}>Code: {req.shop_code}</Text>
+                      <View style={styles.bizBadge}>
+                        <Ionicons name="business" size={10} color={theme.primary} />
+                        <Text style={styles.bizBadgeText}>{req.business_name || 'Business'}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={[styles.statusBadgePill, { backgroundColor: badgeBg }]}>
+                    <Text style={[styles.statusBadgePillText, { color: badgeText }]}>{statusLabel}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.requesterInfoRow}>
+                  <Ionicons name="person-outline" size={14} color={theme.textSecondary} />
+                  <Text style={styles.requesterInfoText}>
+                    Requested by: <Text style={{ fontWeight: '700', color: theme.text }}>{req.requested_by_name || 'Store Admin'}</Text>
+                    {req.requested_by_phone ? ` (${req.requested_by_phone})` : ''}
+                  </Text>
+                </View>
+
+                {req.address && (
+                  <View style={styles.metaRow}>
+                    <Ionicons name="location-outline" size={14} color={theme.textMuted} />
+                    <Text style={styles.metaText}>{req.address}</Text>
+                  </View>
+                )}
+
+                {req.phone && (
+                  <View style={styles.metaRow}>
+                    <Ionicons name="call-outline" size={14} color={theme.textMuted} />
+                    <Text style={styles.metaText}>{req.phone}</Text>
+                  </View>
+                )}
+
+                {req.admin_notes && (
+                  <View style={styles.adminNotesBox}>
+                    <Text style={styles.adminNotesLabel}>Admin Justification / Notes:</Text>
+                    <Text style={styles.adminNotesText}>{req.admin_notes}</Text>
+                  </View>
+                )}
+
+                {req.super_admin_notes && (
+                  <View style={styles.reviewedFeedbackBox}>
+                    <Text style={styles.reviewedFeedbackLabel}>Reviewer Feedback:</Text>
+                    <Text style={styles.reviewedFeedbackText}>{req.super_admin_notes}</Text>
+                  </View>
+                )}
+
+                <Text style={styles.requestTimestamp}>
+                  Submitted on {new Date(req.created_at).toLocaleString()}
+                  {req.reviewed_at ? ` • Reviewed on ${new Date(req.reviewed_at).toLocaleString()}` : ''}
+                </Text>
+
+                {isPending && (
+                  <View style={styles.requestActionsRow}>
+                    <TouchableOpacity
+                      style={styles.rejectBtn}
+                      onPress={() => openReviewModal(req, 'reject')}
+                    >
+                      <Ionicons name="close-circle-outline" size={16} color={theme.danger} />
+                      <Text style={styles.rejectBtnText}>Reject</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.approveBtn}
+                      onPress={() => openReviewModal(req, 'approve')}
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                      <Text style={styles.approveBtnText}>Approve & Create Store</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+
+          {filteredRequests.length === 0 && (
+            <View style={styles.emptyBox}>
+              <Ionicons name="document-text-outline" size={38} color={theme.textMuted} />
+              <Text style={styles.emptyText}>No store requests found for this filter.</Text>
+            </View>
+          )}
+        </ScrollView>
       )}
+
+      {/* Review Modal (Approve / Reject with Notes) */}
+      <Modal visible={reviewModalVisible} transparent animationType="fade" onRequestClose={() => setReviewModalVisible(false)}>
+        <View style={styles.overlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>
+              {reviewAction === 'approve' ? 'Approve Store Request' : 'Reject Store Request'}
+            </Text>
+            <Text style={styles.modalDesc}>
+              {reviewAction === 'approve' 
+                ? `Approving will instantiate store '${selectedRequest?.name}' (${selectedRequest?.shop_code}) under ${selectedRequest?.business_name}.`
+                : `Reject request for '${selectedRequest?.name}' (${selectedRequest?.shop_code}).`}
+            </Text>
+
+            <Text style={styles.label}>Feedback Notes for Store Admin (Optional)</Text>
+            <TextInput
+              style={[styles.input, { height: 75, textAlignVertical: 'top' }]}
+              placeholder={reviewAction === 'approve' ? "e.g. Approved. Please proceed to onboard sellers." : "e.g. Needs revised location details or market study."}
+              placeholderTextColor={theme.textMuted}
+              value={superAdminNotes}
+              onChangeText={setSuperAdminNotes}
+              multiline
+            />
+
+            <View style={styles.btnRow}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setReviewModalVisible(false)}
+                disabled={processingReview}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.confirmBtn,
+                  reviewAction === 'reject' && { backgroundColor: theme.danger },
+                  processingReview && { opacity: 0.6 }
+                ]}
+                onPress={handleProcessReview}
+                disabled={processingReview}
+              >
+                {processingReview ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.confirmText}>
+                    {reviewAction === 'approve' ? 'Approve & Create Store' : 'Reject Request'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Add Shop Modal */}
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
@@ -631,6 +896,181 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   confirmText: {
     color: '#fff',
     fontSize: 13,
+    fontWeight: '700'
+  },
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.surfaceBorder,
+    backgroundColor: theme.surface,
+    paddingHorizontal: 16
+  },
+  tabBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent'
+  },
+  tabBtnActive: {
+    borderBottomColor: theme.primary
+  },
+  tabBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.textSecondary
+  },
+  tabBtnTextActive: {
+    color: theme.primary,
+    fontWeight: '700'
+  },
+  tabBadge: {
+    backgroundColor: theme.warning,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
+    marginLeft: 2
+  },
+  tabBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800'
+  },
+  requestCard: {
+    backgroundColor: theme.surface,
+    borderRadius: theme.radius.lg,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder
+  },
+  requestCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8
+  },
+  requestTitleBox: {
+    flex: 1,
+    paddingRight: 8
+  },
+  requestTitle: {
+    color: theme.text,
+    fontSize: 16,
+    fontWeight: '800'
+  },
+  requestMetaHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4
+  },
+  requestCodeBadge: {
+    color: theme.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6
+  },
+  statusBadgePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6
+  },
+  statusBadgePillText: {
+    fontSize: 10,
+    fontWeight: '800'
+  },
+  requesterInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6
+  },
+  requesterInfoText: {
+    color: theme.textSecondary,
+    fontSize: 12
+  },
+  adminNotesBox: {
+    backgroundColor: 'rgba(99, 102, 241, 0.05)',
+    borderRadius: 6,
+    padding: 10,
+    marginTop: 6
+  },
+  adminNotesLabel: {
+    color: theme.primary,
+    fontSize: 10,
+    fontWeight: '700'
+  },
+  adminNotesText: {
+    color: theme.text,
+    fontSize: 12,
+    marginTop: 2
+  },
+  reviewedFeedbackBox: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderLeftWidth: 3,
+    borderLeftColor: theme.warning,
+    borderRadius: 6,
+    padding: 10,
+    marginTop: 6
+  },
+  reviewedFeedbackLabel: {
+    color: theme.warning,
+    fontSize: 10,
+    fontWeight: '700'
+  },
+  reviewedFeedbackText: {
+    color: theme.text,
+    fontSize: 12,
+    marginTop: 2
+  },
+  requestTimestamp: {
+    color: theme.textMuted,
+    fontSize: 10,
+    marginTop: 8
+  },
+  requestActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: theme.surfaceBorder
+  },
+  rejectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)'
+  },
+  rejectBtnText: {
+    color: theme.danger,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  approveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: theme.accent
+  },
+  approveBtnText: {
+    color: '#fff',
+    fontSize: 12,
     fontWeight: '700'
   }
 });

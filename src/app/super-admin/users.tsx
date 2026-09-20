@@ -181,21 +181,21 @@ export default function SuperAdminUsers() {
   };
 
   const handleResetPassword = async () => {
-    if (!targetUser || !newTempPassword || newTempPassword.length < 6) {
-      Alert.alert('Validation Error', 'Temporary password must be at least 6 characters.');
+    if (!targetUser || !newTempPassword || newTempPassword.length < 4) {
+      Alert.alert('Validation Error', 'Temporary PIN must be 4 to 6 numeric digits.');
       return;
     }
 
     setResetting(true);
     try {
       await authApi.resetPassword(targetUser.id, newTempPassword);
-      Alert.alert('Password Reset', `Temporary password set for ${targetUser.username}. User must change it on next login.`);
+      Alert.alert('PIN Reset', `Temporary PIN set for ${targetUser.username}. The user can now login with this PIN.`);
       setResetModalVisible(false);
       setNewTempPassword('');
       setTargetUser(null);
       loadData();
     } catch (err: any) {
-      Alert.alert('Reset Failed', err.message || 'Could not reset password.');
+      Alert.alert('Reset Failed', err.message || 'Could not reset PIN.');
     } finally {
       setResetting(false);
     }
@@ -245,7 +245,9 @@ export default function SuperAdminUsers() {
                 <View style={styles.userTop}>
                   <View style={styles.userMeta}>
                     <View style={styles.nameRow}>
-                      <Text style={styles.userName}>{u.full_name}</Text>
+                      <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
+                        {u.full_name || u.username}
+                      </Text>
                       <View style={[
                         styles.roleBadge,
                         u.role === 'super_admin' ? styles.roleSuper : (u.role === 'admin' ? styles.roleAdmin : styles.roleSeller)
@@ -253,14 +255,18 @@ export default function SuperAdminUsers() {
                         <Text style={styles.roleText}>{u.role.toUpperCase().replace('_', ' ')}</Text>
                       </View>
                     </View>
-                    <Text style={styles.userEmail}>@{u.username} • {u.email}</Text>
+                    <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="tail">
+                      @{u.username} • {u.email}
+                    </Text>
                     {u.phone_number ? (
-                      <Text style={[styles.userEmail, { marginTop: 2, color: theme.primary, fontWeight: '600' }]}>
+                      <Text style={[styles.userEmail, { marginTop: 2, color: theme.primary, fontWeight: '600' }]} numberOfLines={1}>
                         📱 {formatPhoneNumber(u.phone_number)}
                       </Text>
                     ) : null}
                     {u.business_name ? (
-                      <Text style={styles.userBusiness}>🏢 {u.business_name} {u.shop_name ? `• 🏪 ${u.shop_name}` : ''}</Text>
+                      <Text style={styles.userBusiness} numberOfLines={1} ellipsizeMode="tail">
+                        🏢 {u.business_name} {u.shop_name ? `• 🏪 ${u.shop_name}` : ''}
+                      </Text>
                     ) : null}
                   </View>
 
@@ -292,12 +298,12 @@ export default function SuperAdminUsers() {
                       style={styles.actionBtn}
                       onPress={() => {
                         setTargetUser(u);
-                        setNewTempPassword('TempPass123!');
+                        setNewTempPassword('123456');
                         setResetModalVisible(true);
                       }}
                     >
                       <Ionicons name="key-outline" size={14} color={theme.textSecondary} />
-                      <Text style={[styles.actionBtnText, { color: theme.textSecondary }]}>Reset Password</Text>
+                      <Text style={[styles.actionBtnText, { color: theme.textSecondary }]}>Reset PIN</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -310,7 +316,7 @@ export default function SuperAdminUsers() {
                         color={u.is_active ? theme.danger : theme.accent}
                       />
                       <Text style={[styles.actionBtnText, { color: u.is_active ? theme.danger : theme.accent }]}>
-                        {u.is_active ? 'Suspend Admin' : 'Reactivate'}
+                        {u.is_active ? 'Suspend' : 'Reactivate'}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -485,27 +491,29 @@ export default function SuperAdminUsers() {
         </ScrollView>
       )}
 
-      {/* Reset Password Modal */}
+      {/* Reset PIN Modal */}
       <Modal visible={resetModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Reset Admin Credentials</Text>
+              <Text style={styles.modalTitle}>Reset Staff PIN</Text>
               <TouchableOpacity onPress={() => setResetModalVisible(false)}>
                 <Ionicons name="close" size={20} color={theme.textMuted} />
               </TouchableOpacity>
             </View>
 
             <Text style={styles.modalDesc}>
-              Assign a temporary password for <Text style={{ fontWeight: '700' }}>{targetUser?.username}</Text>. The user will be required to change it upon first login.
+              Assign a temporary login PIN for <Text style={{ fontWeight: '700' }}>{targetUser?.username}</Text>.
             </Text>
 
             <TextInput
               style={styles.input}
-              placeholder="Enter temporary password"
+              placeholder="Enter 4-6 digit numeric PIN"
               placeholderTextColor={theme.textMuted}
               value={newTempPassword}
               onChangeText={setNewTempPassword}
+              keyboardType="number-pad"
+              maxLength={6}
             />
 
             <View style={styles.modalActions}>
@@ -517,7 +525,7 @@ export default function SuperAdminUsers() {
                 onPress={handleResetPassword}
                 disabled={resetting}
               >
-                {resetting ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.submitBtnText}>Set Password</Text>}
+                {resetting ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.submitBtnText}>Set PIN</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -651,23 +659,28 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     alignItems: 'flex-start'
   },
   userMeta: {
-    flex: 1
+    flex: 1,
+    minWidth: 0,
+    marginRight: 8
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 4
   },
   userName: {
     fontSize: 15,
     fontWeight: '700',
-    color: theme.text
+    color: theme.text,
+    flexShrink: 1
   },
   roleBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 4
+    borderRadius: 4,
+    flexShrink: 0
   },
   roleSuper: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)'
@@ -695,7 +708,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6
+    borderRadius: 6,
+    flexShrink: 0
   },
   statusActive: {
     backgroundColor: 'rgba(16, 185, 129, 0.1)'
@@ -715,7 +729,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    gap: 10,
+    flexWrap: 'wrap',
+    gap: 8,
     marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
@@ -725,12 +740,14 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 6,
+    paddingVertical: 7,
     paddingHorizontal: 12,
-    borderRadius: 6,
+    borderRadius: 8,
     backgroundColor: theme.surfaceLight,
     borderWidth: 1,
-    borderColor: theme.surfaceBorder
+    borderColor: theme.surfaceBorder,
+    flexGrow: 1,
+    justifyContent: 'center'
   },
   actionBtnDanger: {
     borderColor: 'rgba(239, 68, 68, 0.3)'

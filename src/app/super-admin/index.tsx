@@ -114,7 +114,7 @@ export default function SuperAdminDashboard() {
 
   return (
     <View style={styles.container}>
-      <Header title="Platform Overseer" subtitle="System-Level Enterprise Administration" />
+      <Header title="JM Solution POS" subtitle="System-Level Platform Administration" />
 
       {loading ? (
         <View style={styles.center}>
@@ -164,36 +164,36 @@ export default function SuperAdminDashboard() {
               <View style={[styles.statIcon, { backgroundColor: 'rgba(79, 70, 229, 0.1)' }]}>
                 <Ionicons name="business" size={20} color={theme.primary} />
               </View>
-              <Text style={styles.statLabel}>Businesses</Text>
-              <Text style={styles.statValue}>{businesses.length}</Text>
-              <Text style={styles.statSub}>Registered Enterprise Tenants</Text>
+              <Text style={styles.statLabel} numberOfLines={1}>Businesses</Text>
+              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{businesses.length}</Text>
+              <Text style={styles.statSub} numberOfLines={2}>Registered Enterprise Tenants</Text>
             </View>
 
             <View style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: 'rgba(14, 165, 233, 0.1)' }]}>
                 <Ionicons name="shield-checkmark" size={20} color={theme.secondary} />
               </View>
-              <Text style={styles.statLabel}>Business Admins</Text>
-              <Text style={styles.statValue}>{adminCount}</Text>
-              <Text style={styles.statSub}>Active Business Owners</Text>
+              <Text style={styles.statLabel} numberOfLines={1}>Business Admins</Text>
+              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{adminCount}</Text>
+              <Text style={styles.statSub} numberOfLines={2}>Active Business Owners</Text>
             </View>
 
             <View style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
                 <Ionicons name="storefront" size={20} color={theme.accent} />
               </View>
-              <Text style={styles.statLabel}>Active Shops</Text>
-              <Text style={styles.statValue}>{shops.length}</Text>
-              <Text style={styles.statSub}>Storefront Branches</Text>
+              <Text style={styles.statLabel} numberOfLines={1}>Active Shops</Text>
+              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{shops.length}</Text>
+              <Text style={styles.statSub} numberOfLines={2}>Storefront Branches</Text>
             </View>
 
             <View style={styles.statCard}>
               <View style={[styles.statIcon, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
                 <Ionicons name="card" size={20} color="#F59E0B" />
               </View>
-              <Text style={styles.statLabel}>Sellers / Cashiers</Text>
-              <Text style={styles.statValue}>{sellerCount}</Text>
-              <Text style={styles.statSub}>Operating Floor Staff</Text>
+              <Text style={styles.statLabel} numberOfLines={1}>Sellers / Cashiers</Text>
+              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{sellerCount}</Text>
+              <Text style={styles.statSub} numberOfLines={2}>Operating Floor Staff</Text>
             </View>
           </View>
 
@@ -212,9 +212,9 @@ export default function SuperAdminDashboard() {
                   <View style={styles.bizBadge}>
                     <Text style={styles.bizBadgeText}>{biz.business_code}</Text>
                   </View>
-                  <View>
-                    <Text style={styles.bizName}>{biz.name}</Text>
-                    <Text style={styles.bizCurrency}>
+                  <View style={styles.bizTitleCol}>
+                    <Text style={styles.bizName} numberOfLines={1} ellipsizeMode="tail">{biz.name}</Text>
+                    <Text style={styles.bizCurrency} numberOfLines={1} ellipsizeMode="tail">
                       Currency: {biz.currency_code} ({biz.currency_symbol})
                     </Text>
                   </View>
@@ -233,22 +233,27 @@ export default function SuperAdminDashboard() {
                 </View>
               </View>
 
-              <View style={styles.bizStatsRow}>
-                <View style={styles.bizStatItem}>
-                  <Text style={styles.miniLabel}>Shops</Text>
-                  <Text style={styles.miniValue}>{biz.shops_count || 0}</Text>
+              <View style={styles.bizStatsContainer}>
+                <View style={styles.bizStatsCountsRow}>
+                  <View style={styles.bizCountItem}>
+                    <Text style={styles.miniLabel}>Shops</Text>
+                    <Text style={styles.miniValue} numberOfLines={1}>{biz.shops_count || 0}</Text>
+                  </View>
+                  <View style={styles.bizStatDivider} />
+                  <View style={styles.bizCountItem}>
+                    <Text style={styles.miniLabel}>Admins</Text>
+                    <Text style={styles.miniValue} numberOfLines={1}>{biz.admins_count || 0}</Text>
+                  </View>
+                  <View style={styles.bizStatDivider} />
+                  <View style={styles.bizCountItem}>
+                    <Text style={styles.miniLabel}>Sellers</Text>
+                    <Text style={styles.miniValue} numberOfLines={1}>{biz.sellers_count || 0}</Text>
+                  </View>
                 </View>
-                <View style={styles.bizStatItem}>
-                  <Text style={styles.miniLabel}>Admins</Text>
-                  <Text style={styles.miniValue}>{biz.admins_count || 0}</Text>
-                </View>
-                <View style={styles.bizStatItem}>
-                  <Text style={styles.miniLabel}>Sellers</Text>
-                  <Text style={styles.miniValue}>{biz.sellers_count || 0}</Text>
-                </View>
-                <View style={styles.bizStatItem}>
-                  <Text style={styles.miniLabel}>Total Sales</Text>
-                  <Text style={styles.miniValue}>
+
+                <View style={styles.bizSalesRow}>
+                  <Text style={styles.bizSalesLabel}>Total Revenue</Text>
+                  <Text style={styles.bizSalesValue} numberOfLines={1} adjustsFontSizeToFit>
                     {formatCurrency(biz.total_revenue || 0, biz.currency_symbol || 'TSh')}
                   </Text>
                 </View>
@@ -262,17 +267,17 @@ export default function SuperAdminDashboard() {
               <Text style={[styles.sectionHeader, { marginTop: 14 }]}>Today's Global POS Activity</Text>
               <View style={styles.statsGrid}>
                 <View style={styles.statCard}>
-                  <Text style={styles.statLabel}>Today's Global Revenue</Text>
-                  <Text style={[styles.statValue, { color: theme.accent }]}>
+                  <Text style={styles.statLabel} numberOfLines={1}>Today's Global Revenue</Text>
+                  <Text style={[styles.statValue, { color: theme.accent }]} numberOfLines={1} adjustsFontSizeToFit>
                     {formatCurrency(globalSummary.total_revenue || 0)}
                   </Text>
-                  <Text style={styles.statSub}>{globalSummary.total_transactions} Transactions Today</Text>
+                  <Text style={styles.statSub} numberOfLines={1}>{globalSummary.total_transactions} Transactions Today</Text>
                 </View>
 
                 <View style={styles.statCard}>
-                  <Text style={styles.statLabel}>Units Sold Today</Text>
-                  <Text style={styles.statValue}>{globalSummary.total_units_sold}</Text>
-                  <Text style={styles.statSub}>Across {globalSummary.reporting_shops} Reporting Stores</Text>
+                  <Text style={styles.statLabel} numberOfLines={1}>Units Sold Today</Text>
+                  <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{globalSummary.total_units_sold}</Text>
+                  <Text style={styles.statSub} numberOfLines={1}>Across {globalSummary.reporting_shops} Reporting Stores</Text>
                 </View>
               </View>
             </>
@@ -488,18 +493,25 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    flex: 1
+    flex: 1,
+    minWidth: 0,
+    marginRight: 8
   },
   bizBadge: {
     backgroundColor: 'rgba(79, 70, 229, 0.1)',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6
+    borderRadius: 6,
+    flexShrink: 0
   },
   bizBadgeText: {
     color: theme.primary,
     fontSize: 12,
     fontWeight: '800'
+  },
+  bizTitleCol: {
+    flex: 1,
+    minWidth: 0
   },
   bizName: {
     fontSize: 15,
@@ -514,7 +526,8 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   statusPill: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6
+    borderRadius: 6,
+    flexShrink: 0
   },
   statusActive: {
     backgroundColor: 'rgba(16, 185, 129, 0.1)'
@@ -532,15 +545,25 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   statusTextSuspended: {
     color: theme.danger
   },
-  bizStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  bizStatsContainer: {
     backgroundColor: theme.surfaceLight,
+    borderRadius: 10,
     padding: 10,
-    borderRadius: 10
+    gap: 8
   },
-  bizStatItem: {
+  bizStatsCountsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around'
+  },
+  bizCountItem: {
+    flex: 1,
     alignItems: 'center'
+  },
+  bizStatDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: theme.surfaceBorder
   },
   miniLabel: {
     color: theme.textMuted,
@@ -548,9 +571,30 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   },
   miniValue: {
     color: theme.text,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     marginTop: 2
+  },
+  bizSalesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: theme.surfaceBorder
+  },
+  bizSalesLabel: {
+    color: theme.textSecondary,
+    fontSize: 11,
+    fontWeight: '600'
+  },
+  bizSalesValue: {
+    color: theme.accent,
+    fontSize: 13,
+    fontWeight: '800',
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 8
   },
   modalOverlay: {
     flex: 1,

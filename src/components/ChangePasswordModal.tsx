@@ -30,45 +30,45 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   const styles = useStyles(createStyles);
   const { refreshProfile } = useAuth();
 
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [oldPin, setOldPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [showPasswords, setShowPasswords] = useState(false);
+  const [showPin, setShowPin] = useState(false);
 
   const handleSubmit = async () => {
-    if (!oldPassword || !newPassword) {
-      Alert.alert('Required Fields', 'Please enter your current and new password.');
+    if (!oldPin || !newPin) {
+      Alert.alert('Required Fields', 'Please enter your current and new 6-digit PIN.');
       return;
     }
 
-    if (newPassword.length < 6) {
-      Alert.alert('Weak Password', 'New password must be at least 6 characters long.');
+    if (!/^\d{6}$/.test(newPin)) {
+      Alert.alert('Invalid PIN', 'New PIN must be exactly 6 numeric digits.');
       return;
     }
 
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Mismatch', 'New password and confirmation password do not match.');
+    if (newPin !== confirmPin) {
+      Alert.alert('Mismatch', 'New PIN and confirmation PIN do not match.');
       return;
     }
 
     setSubmitting(true);
     try {
-      await authApi.changePassword(oldPassword, newPassword);
+      await authApi.setPin(newPin, oldPin);
       await refreshProfile();
-      Alert.alert('Success', 'Your password has been changed successfully.', [
+      Alert.alert('Success', 'Your PIN has been updated successfully.', [
         {
           text: 'OK',
           onPress: () => {
-            setOldPassword('');
-            setNewPassword('');
-            setConfirmPassword('');
+            setOldPin('');
+            setNewPin('');
+            setConfirmPin('');
             onClose();
           }
         }
       ]);
     } catch (err: any) {
-      Alert.alert('Password Change Failed', err.message || 'Could not change password.');
+      Alert.alert('PIN Update Failed', err.message || 'Could not update PIN.');
     } finally {
       setSubmitting(false);
     }
@@ -81,15 +81,15 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Ionicons name="key-outline" size={24} color={theme.primary} />
+              <Ionicons name="keypad-outline" size={24} color={theme.primary} />
               <View>
                 <Text style={styles.title}>
-                  {isForced ? 'Update Temporary Password' : 'Change Password'}
+                  {isForced ? 'Update Temporary PIN' : 'Change PIN'}
                 </Text>
                 <Text style={styles.subtitle}>
                   {isForced
-                    ? 'You must set a permanent password before continuing'
-                    : 'Enter your current password and choose a new one'}
+                    ? 'You must set a permanent 6-digit PIN before continuing'
+                    : 'Enter your current PIN and choose a new 6-digit PIN'}
                 </Text>
               </View>
             </View>
@@ -102,46 +102,52 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
           {/* Form inputs */}
           <View style={styles.form}>
-            <Text style={styles.label}>Current / Temporary Password</Text>
+            <Text style={styles.label}>Current / Temporary PIN</Text>
             <View style={styles.inputRow}>
               <TextInput
                 style={styles.input}
-                secureTextEntry={!showPasswords}
-                placeholder="Enter current password"
+                secureTextEntry={!showPin}
+                placeholder="Enter current PIN"
                 placeholderTextColor={theme.textMuted}
-                value={oldPassword}
-                onChangeText={setOldPassword}
+                value={oldPin}
+                onChangeText={(val) => setOldPin(val.replace(/\D/g, '').slice(0, 6))}
+                keyboardType="number-pad"
+                maxLength={6}
               />
-              <TouchableOpacity onPress={() => setShowPasswords(!showPasswords)}>
+              <TouchableOpacity onPress={() => setShowPin(!showPin)}>
                 <Ionicons
-                  name={showPasswords ? 'eye-off-outline' : 'eye-outline'}
+                  name={showPin ? 'eye-off-outline' : 'eye-outline'}
                   size={20}
                   color={theme.textMuted}
                 />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.label}>New Permanent Password</Text>
+            <Text style={styles.label}>New Permanent 6-Digit PIN</Text>
             <View style={styles.inputRow}>
               <TextInput
                 style={styles.input}
-                secureTextEntry={!showPasswords}
-                placeholder="At least 6 characters"
+                secureTextEntry={!showPin}
+                placeholder="6 numeric digits (e.g. 123456)"
                 placeholderTextColor={theme.textMuted}
-                value={newPassword}
-                onChangeText={setNewPassword}
+                value={newPin}
+                onChangeText={(val) => setNewPin(val.replace(/\D/g, '').slice(0, 6))}
+                keyboardType="number-pad"
+                maxLength={6}
               />
             </View>
 
-            <Text style={styles.label}>Confirm New Password</Text>
+            <Text style={styles.label}>Confirm New PIN</Text>
             <View style={styles.inputRow}>
               <TextInput
                 style={styles.input}
-                secureTextEntry={!showPasswords}
-                placeholder="Re-enter new password"
+                secureTextEntry={!showPin}
+                placeholder="Re-enter 6-digit PIN"
                 placeholderTextColor={theme.textMuted}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
+                value={confirmPin}
+                onChangeText={(val) => setConfirmPin(val.replace(/\D/g, '').slice(0, 6))}
+                keyboardType="number-pad"
+                maxLength={6}
               />
             </View>
           </View>
@@ -162,7 +168,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               {submitting ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={styles.submitText}>Save New Password</Text>
+                <Text style={styles.submitText}>Save New PIN</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -171,6 +177,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     </Modal>
   );
 };
+
+export const ChangePinModal = ChangePasswordModal;
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({

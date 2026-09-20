@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "e-commerce-app",
+    "name": "JM Solution POS",
     "slug": "e-commerce-app",
-    "version": "2.0.0",
+    "version": "1.1.1",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/jmsolutions.png",
     "scheme": "ecommerceapp",
     "owner": "nameless-adroit",
     "userInterfaceStyle": "automatic",
@@ -13,10 +13,10 @@
     },
     "android": {
       "package": "com.jmsolutions.ecommerceapp",
-      "versionCode": 4,
+      "versionCode": 5,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "foregroundImage": "./assets/images/jmsolutions.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
