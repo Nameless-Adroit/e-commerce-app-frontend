@@ -23,26 +23,42 @@ import {
 const TOKEN_KEY = 'POS_AUTH_TOKEN';
 const ACTIVE_SHOP_KEY = 'POS_ACTIVE_SHOP_ID';
 
+// Short-lived 15-minute Access Token is held EXCLUSIVELY in application memory
 let inMemoryToken: string | null = null;
 let inMemoryActiveShopId: number | null = null;
 
+// Mutex & Queue for handling concurrent 401 requests during token refresh
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string | null, error?: any) => void> = [];
+let onSessionExpiredCallback: (() => void) | null = null;
+
+export function setOnSessionExpired(callback: () => void): void {
+  onSessionExpiredCallback = callback;
+}
+
+function subscribeTokenRefresh(cb: (token: string | null, error?: any) => void) {
+  refreshSubscribers.push(cb);
+}
+
+function onRefreshed(token: string | null, error?: any) {
+  refreshSubscribers.forEach(cb => cb(token, error));
+  refreshSubscribers = [];
+}
+
 export async function setAuthToken(token: string | null): Promise<void> {
   inMemoryToken = token;
-  if (token) {
-    await AsyncStorage.setItem(TOKEN_KEY, token);
-  } else {
-    await AsyncStorage.removeItem(TOKEN_KEY);
+  // Clean up any legacy persisted tokens to ensure access tokens reside only in memory
+  if (!token) {
+    try {
+      await AsyncStorage.removeItem(TOKEN_KEY);
+    } catch {
+      // Ignore cleanup error
+    }
   }
 }
 
 export async function getAuthToken(): Promise<string | null> {
-  if (inMemoryToken) return inMemoryToken;
-  try {
-    inMemoryToken = await AsyncStorage.getItem(TOKEN_KEY);
-    return inMemoryToken;
-  } catch {
-    return null;
-  }
+  return inMemoryToken;
 }
 
 export async function setActiveShopId(shopId: number | null): Promise<void> {
@@ -66,7 +82,7 @@ export async function getActiveShopId(): Promise<number | null> {
 }
 
 /**
- * Generic Fetch wrapper with JSON parsing and error formatting
+ * Generic Fetch wrapper with JSON parsing, error formatting, and centralized 401 token refresh
  */
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const baseUrl = getApiBaseUrl();
@@ -103,8 +119,51 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   try {
     const response = await fetch(url, {
       ...options,
-      headers
+      headers,
+      credentials: 'include' // Transmit HTTP-only refresh cookies on Web and native fetch
     });
+
+    // -------------------------------------------------------------------------
+    // Centralized 401 Access Token Expiration & Refresh Queue Handler
+    // -------------------------------------------------------------------------
+    const isAuthEndpoint = endpoint.includes('/auth/login') || endpoint.includes('/auth/refresh');
+    if (response.status === 401 && !isAuthEndpoint) {
+      if (!isRefreshing) {
+        isRefreshing = true;
+
+        try {
+          // Attempt silent token refresh via HTTP-only cookie
+          const refreshRes = await authApi.refresh();
+          const newToken = refreshRes.data?.token || null;
+          await setAuthToken(newToken);
+          isRefreshing = false;
+          onRefreshed(newToken, null);
+
+          // Retry the original request with the fresh token
+          headers['Authorization'] = `Bearer ${newToken}`;
+          return request<T>(endpoint, { ...options, headers });
+        } catch (refreshErr) {
+          isRefreshing = false;
+          await setAuthToken(null);
+          onRefreshed(null, refreshErr);
+          if (onSessionExpiredCallback) {
+            onSessionExpiredCallback();
+          }
+          throw new Error('Session expired. Please sign in again.');
+        }
+      } else {
+        // Another request is already refreshing the token. Queue this request until resolved.
+        return new Promise<T>((resolve, reject) => {
+          subscribeTokenRefresh((newToken, refreshErr) => {
+            if (refreshErr || !newToken) {
+              return reject(refreshErr || new Error('Session expired. Please sign in again.'));
+            }
+            headers['Authorization'] = `Bearer ${newToken}`;
+            resolve(request<T>(endpoint, { ...options, headers }));
+          });
+        });
+      }
+    }
 
     const contentType = response.headers.get('content-type') || '';
     const json = contentType.includes('application/json')
@@ -148,10 +207,19 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 // Authentication & User Management API
 // -----------------------------------------------------------------------------
 export const authApi = {
-  async login(identifier: string, password: string): Promise<ApiResponse<{ token: string; redirect_url: string; user: User }>> {
-    const res = await request<ApiResponse<{ token: string; redirect_url: string; user: User }>>('/auth/login', {
+  /**
+   * Unified login supporting Phone + PIN (Staff) or Username + Password (Super Admin)
+   */
+  async login(credentials: {
+    phoneNumber?: string;
+    pin?: string;
+    identifier?: string;
+    password?: string;
+    deviceName?: string;
+  }): Promise<ApiResponse<{ token: string; redirect_url: string; user: User; sessionId: string }>> {
+    const res = await request<ApiResponse<{ token: string; redirect_url: string; user: User; sessionId: string }>>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ identifier, password })
+      body: JSON.stringify(credentials)
     });
     if (res.data?.token) {
       await setAuthToken(res.data.token);
@@ -159,8 +227,77 @@ export const authApi = {
     return res;
   },
 
+  /**
+   * Rotates refresh token via HTTP-only cookie and obtains fresh 15-minute access token
+   */
+  async refresh(): Promise<ApiResponse<{ token: string; sessionId: string }>> {
+    const res = await request<ApiResponse<{ token: string; sessionId: string }>>('/auth/refresh', {
+      method: 'POST'
+    });
+    if (res.data?.token) {
+      await setAuthToken(res.data.token);
+    }
+    return res;
+  },
+
+  /**
+   * Logout current device session
+   */
+  async logout(): Promise<void> {
+    try {
+      await request<ApiResponse<any>>('/auth/logout', { method: 'POST' });
+    } catch {
+      // Ignore network errors during logout
+    } finally {
+      await setAuthToken(null);
+      await setActiveShopId(null);
+    }
+  },
+
+  /**
+   * Revoke all active sessions across all devices
+   */
+  async logoutAll(): Promise<void> {
+    try {
+      await request<ApiResponse<any>>('/auth/logout-all', { method: 'POST' });
+    } finally {
+      await setAuthToken(null);
+      await setActiveShopId(null);
+    }
+  },
+
+  /**
+   * Get active authenticated sessions for current user
+   */
+  async getSessions(): Promise<ApiResponse<{ sessions: any[] }>> {
+    return request<ApiResponse<{ sessions: any[] }>>('/auth/sessions');
+  },
+
+  /**
+   * Revoke a specific session
+   */
+  async revokeSession(sessionId: string): Promise<ApiResponse<any>> {
+    return request<ApiResponse<any>>(`/auth/sessions/${encodeURIComponent(sessionId)}`, {
+      method: 'DELETE'
+    });
+  },
+
   async getProfile(): Promise<ApiResponse<User>> {
     return request<ApiResponse<User>>('/auth/profile');
+  },
+
+  async updateProfile(data: { full_name?: string; phone_number?: string; profile_image?: string }): Promise<ApiResponse<User>> {
+    return request<ApiResponse<User>>('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async setPin(pin: string, oldPin?: string): Promise<ApiResponse<any>> {
+    return request<ApiResponse<any>>('/auth/pin', {
+      method: 'POST',
+      body: JSON.stringify({ pin, oldPin })
+    });
   },
 
   async changePassword(oldPassword: string, newPassword: string): Promise<ApiResponse<any>> {
@@ -196,7 +333,9 @@ export const authApi = {
   async registerUser(userData: {
     username: string;
     email: string;
-    password: string;
+    phone_number?: string;
+    password?: string;
+    pin?: string;
     role: string;
     full_name: string;
     business_id?: number;
@@ -208,9 +347,20 @@ export const authApi = {
     });
   },
 
-  async logout(): Promise<void> {
-    await setAuthToken(null);
-    await setActiveShopId(null);
+  async updateUser(userId: number, updateData: {
+    full_name?: string;
+    phone_number?: string;
+    email?: string;
+    role?: string;
+    business_id?: number;
+    shop_id?: number;
+    profile_image?: string;
+    pin?: string;
+  }): Promise<ApiResponse<User>> {
+    return request<ApiResponse<User>>(`/auth/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
   }
 };
 

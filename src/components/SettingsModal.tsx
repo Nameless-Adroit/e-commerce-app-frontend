@@ -20,13 +20,13 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ visible, onClose }: SettingsModalProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, logoutAll } = useAuth();
   const { theme, mode, setMode } = useTheme();
 
   const handleSignOut = () => {
     Alert.alert(
       'Confirm Sign Out',
-      'Are you sure you want to sign out of your account?',
+      'Are you sure you want to sign out of this device?',
       [
         { text: 'Cancel', style: 'cancel' },
         { 
@@ -35,6 +35,24 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           onPress: () => {
             onClose();
             logout();
+          } 
+        }
+      ]
+    );
+  };
+
+  const handleSignOutAll = () => {
+    Alert.alert(
+      'Sign Out All Devices',
+      'This will revoke all active sessions for your account across all phones, tablets, and computers. You will need to log in again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Sign Out Everywhere', 
+          style: 'destructive', 
+          onPress: () => {
+            onClose();
+            logoutAll();
           } 
         }
       ]
@@ -55,7 +73,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           <View style={[styles.headerRow, { borderBottomColor: theme.surfaceBorder }]}>
             <View style={styles.headerTitleCol}>
               <Text style={[styles.title, { color: theme.text }]}>Settings & Info</Text>
-              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>App preferences and system details</Text>
+              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>App preferences and security settings</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: theme.surfaceLight }]}>
               <Ionicons name="close" size={20} color={theme.text} />
@@ -105,12 +123,18 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
             </View>
 
             {/* Signed-in User Details */}
-            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>CURRENT ACCOUNT</Text>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>CURRENT ACCOUNT & IDENTITY</Text>
             <View style={[styles.infoCard, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]}>
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>User Name:</Text>
                 <Text style={[styles.infoValue, { color: theme.text }]}>{user?.username || 'Guest'}</Text>
               </View>
+              {user?.phone_number && (
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Phone Number:</Text>
+                  <Text style={[styles.infoValue, { color: theme.text, fontFamily: 'monospace' }]}>{user.phone_number}</Text>
+                </View>
+              )}
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Assigned Role:</Text>
                 <Text style={[styles.infoValue, { color: theme.primary, fontWeight: '700' }]}>
@@ -125,6 +149,26 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
                   </Text>
                 </View>
               )}
+            </View>
+
+            {/* Security & Active Session */}
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SECURITY & SESSION</Text>
+            <View style={[styles.infoCard, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]}>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Session Architecture:</Text>
+                <View style={styles.statusOnline}>
+                  <View style={styles.statusDot} />
+                  <Text style={[styles.statusText, { color: '#10B981' }]}>Secure Dual-Token</Text>
+                </View>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Access Lifetime:</Text>
+                <Text style={[styles.infoValue, { color: theme.text }]}>15 Minutes (In-Memory)</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Refresh Lifetime:</Text>
+                <Text style={[styles.infoValue, { color: theme.text }]}>7 Days (HTTP-Only Cookie)</Text>
+              </View>
             </View>
 
             {/* Application & Server Information */}
@@ -142,14 +186,23 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
               </View>
             </View>
 
-            {/* Logout Action */}
+            {/* Logout Actions */}
             <TouchableOpacity
               style={[styles.signOutBtn, { borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}
               onPress={handleSignOut}
               activeOpacity={0.8}
             >
               <Ionicons name="log-out-outline" size={18} color={theme.danger} />
-              <Text style={[styles.signOutText, { color: theme.danger }]}>Sign Out of POS</Text>
+              <Text style={[styles.signOutText, { color: theme.danger }]}>Sign Out of This Device</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.signOutBtn, { borderColor: 'rgba(239, 68, 68, 0.5)', backgroundColor: 'rgba(239, 68, 68, 0.15)', marginTop: 0 }]}
+              onPress={handleSignOutAll}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="shield-outline" size={18} color={theme.danger} />
+              <Text style={[styles.signOutText, { color: theme.danger }]}>Sign Out of All Devices Everywhere</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>

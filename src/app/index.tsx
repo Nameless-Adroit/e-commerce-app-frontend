@@ -14,24 +14,42 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { formatPhoneNumber, getPhoneOperatorName } from '../utils/phone';
 
 export default function LoginScreen() {
   const { login } = useAuth();
   const { theme } = useTheme();
+
   const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [secret, setSecret] = useState('');
+  const [showSecret, setShowSecret] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState<'id' | 'secret' | null>(null);
+
+  // Live detection of Tanzanian mobile operator
+  const detectedOperator = getPhoneOperatorName(identifier);
+  const isPhoneInput = Boolean(detectedOperator || /^(\+?255|0)[67]/.test(identifier.replace(/\s+/g, '')));
+
+  const handleIdentifierChange = (val: string) => {
+    if (/^\+?\d[\d\s-]*$/.test(val)) {
+      setIdentifier(formatPhoneNumber(val));
+    } else {
+      setIdentifier(val);
+    }
+  };
 
   const handleLogin = async () => {
-    if (!identifier.trim() || !password) {
-      Alert.alert('Missing Fields', 'Please enter your username/email and password.');
+    const cleanId = identifier.trim();
+    const cleanSecret = secret.trim();
+
+    if (!cleanId || !cleanSecret) {
+      Alert.alert('Missing Credentials', 'Please enter your phone number and PIN.');
       return;
     }
 
     setLoading(true);
     try {
-      await login(identifier.trim(), password);
+      await login(cleanId, cleanSecret);
     } catch (err: any) {
       Alert.alert('Authentication Failed', err.message || 'Invalid credentials or server unavailable.');
     } finally {
@@ -39,11 +57,41 @@ export default function LoginScreen() {
     }
   };
 
+  // Dynamic Theme Colors for Input Surfaces
+  const inputBg = theme.isDark ? '#0F172A' : '#F8FAFC';
+  const defaultBorder = theme.isDark ? '#27354A' : '#CBD5E1';
+  const activeBorder = theme.primary;
+
   return (
     <KeyboardAvoidingView 
       style={[styles.container, { backgroundColor: theme.background }]} 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      {/* Web Autofill and CSS Input Reset */}
+      {Platform.OS === 'web' && (
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              input:-webkit-autofill,
+              input:-webkit-autofill:hover, 
+              input:-webkit-autofill:focus,
+              input:-webkit-autofill:active {
+                -webkit-text-fill-color: ${theme.text} !important;
+                -webkit-box-shadow: 0 0 0px 1000px ${inputBg} inset !important;
+                transition: background-color 5000s ease-in-out 0s;
+              }
+              input {
+                background-color: transparent !important;
+                outline: none !important;
+                border: none !important;
+                box-shadow: none !important;
+                color: ${theme.text} !important;
+              }
+            `
+          }}
+        />
+      )}
+
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Top Branding */}
         <View style={styles.brandContainer}>
@@ -54,42 +102,95 @@ export default function LoginScreen() {
           <Text style={[styles.appSubtitle, { color: theme.textSecondary }]}>Enterprise Point of Sale & Inventory Platform</Text>
         </View>
 
-        {/* Login Form Card */}
+        {/* Single Unified Login Form Card */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
-          <Text style={[styles.formTitle, { color: theme.text }]}>Sign In</Text>
-          <Text style={[styles.formDesc, { color: theme.textSecondary }]}>Enter your authorized staff credentials</Text>
+          <Text style={[styles.formTitle, { color: theme.text }]}>Sign In to Continue</Text>
+          <Text style={[styles.formDesc, { color: theme.textSecondary }]}>
+            Enter your credentials to access your store
+          </Text>
 
-          {/* Identifier Input */}
-          <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Username or Email</Text>
-          <View style={[styles.inputContainer, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
-            <Ionicons name="person-outline" size={18} color={theme.textMuted} style={styles.inputIcon} />
+          {/* Field 1: Phone Number */}
+          <View style={styles.labelRow}>
+            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+              Phone Number
+            </Text>
+            {detectedOperator && (
+              <Text style={[styles.operatorBadge, { color: theme.primary }]}>
+                {detectedOperator}
+              </Text>
+            )}
+          </View>
+          <View 
+            style={[
+              styles.inputContainer, 
+              { 
+                backgroundColor: inputBg, 
+                borderColor: focusedField === 'id' ? activeBorder : defaultBorder,
+                borderWidth: focusedField === 'id' ? 1.5 : 1
+              }
+            ]}
+          >
+            {isPhoneInput ? (
+              <Text style={styles.flagIcon}>🇹🇿</Text>
+            ) : (
+              <Ionicons name="call-outline" size={18} color={focusedField === 'id' ? theme.primary : theme.textMuted} style={styles.inputIcon} />
+            )}
             <TextInput
               style={[styles.input, { color: theme.text }]}
-              placeholder="Username or email"
+              placeholder="0712 345 678"
               placeholderTextColor={theme.textMuted}
               value={identifier}
-              onChangeText={setIdentifier}
+              onChangeText={handleIdentifierChange}
+              onFocus={() => setFocusedField('id')}
+              onBlur={() => setFocusedField(null)}
               autoCapitalize="none"
               autoCorrect={false}
+              keyboardType={isPhoneInput ? 'phone-pad' : 'default'}
+              returnKeyType="next"
             />
+            {identifier.length > 0 && (
+              <TouchableOpacity onPress={() => setIdentifier('')} style={styles.clearBtn}>
+                <Ionicons name="close-circle" size={16} color={theme.textMuted} />
+              </TouchableOpacity>
+            )}
           </View>
 
-          {/* Password Input */}
-          <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Password</Text>
-          <View style={[styles.inputContainer, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
-            <Ionicons name="lock-closed-outline" size={18} color={theme.textMuted} style={styles.inputIcon} />
+          {/* Field 2: PIN */}
+          <Text style={[styles.inputLabel, { color: theme.textSecondary, marginTop: 16 }]}>
+            PIN
+          </Text>
+          <View 
+            style={[
+              styles.inputContainer, 
+              { 
+                backgroundColor: inputBg, 
+                borderColor: focusedField === 'secret' ? activeBorder : defaultBorder,
+                borderWidth: focusedField === 'secret' ? 1.5 : 1
+              }
+            ]}
+          >
+            <Ionicons 
+              name="keypad-outline" 
+              size={18} 
+              color={focusedField === 'secret' ? theme.primary : theme.textMuted} 
+              style={styles.inputIcon} 
+            />
             <TextInput
               style={[styles.input, { color: theme.text }]}
-              placeholder="••••••••••••"
+              placeholder="••••"
               placeholderTextColor={theme.textMuted}
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
+              secureTextEntry={!showSecret}
+              value={secret}
+              onChangeText={setSecret}
+              onFocus={() => setFocusedField('secret')}
+              onBlur={() => setFocusedField(null)}
               autoCapitalize="none"
+              keyboardType={isPhoneInput ? 'number-pad' : 'default'}
               onSubmitEditing={handleLogin}
+              returnKeyType="done"
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={theme.textMuted} />
+            <TouchableOpacity onPress={() => setShowSecret(!showSecret)} style={styles.eyeBtn}>
+              <Ionicons name={showSecret ? 'eye-off-outline' : 'eye-outline'} size={18} color={theme.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -104,13 +205,12 @@ export default function LoginScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <View style={styles.btnInner}>
-                <Text style={styles.loginBtnText}>Authenticate & Enter</Text>
+                <Text style={styles.loginBtnText}>Sign In</Text>
                 <Ionicons name="arrow-forward" size={18} color="#fff" />
               </View>
             )}
           </TouchableOpacity>
         </View>
-
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -127,7 +227,7 @@ const styles = StyleSheet.create({
   },
   brandContainer: {
     alignItems: 'center',
-    marginBottom: 28
+    marginBottom: 24
   },
   logoBadge: {
     width: 72,
@@ -151,60 +251,81 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderRadius: 20,
-    padding: 26,
+    padding: 24,
     width: '100%',
     maxWidth: 440,
     alignSelf: 'center',
-    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 14,
     elevation: 4
   },
   formTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
-    letterSpacing: -0.3
+    marginBottom: 4
   },
   formDesc: {
     fontSize: 13,
-    marginTop: 4,
-    marginBottom: 22
+    lineHeight: 18,
+    marginBottom: 20
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6
   },
   inputLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 6
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3
+  },
+  operatorBadge: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.2
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
     borderRadius: 12,
-    marginBottom: 16,
-    paddingHorizontal: 12,
-    height: 50
+    paddingHorizontal: 14,
+    height: 50,
+    overflow: 'hidden'
+  },
+  flagIcon: {
+    fontSize: 18,
+    marginRight: 10
   },
   inputIcon: {
-    marginRight: 8
+    marginRight: 10
   },
   input: {
     flex: 1,
-    paddingVertical: 0,
-    fontSize: 15
+    fontSize: 15,
+    height: '100%',
+    backgroundColor: 'transparent',
+    paddingVertical: 0
   },
   eyeBtn: {
-    padding: 6
+    padding: 6,
+    marginLeft: 4
+  },
+  clearBtn: {
+    padding: 6,
+    marginLeft: 4
   },
   loginBtn: {
+    height: 50,
     borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8
+    alignItems: 'center',
+    marginTop: 22
   },
   btnDisabled: {
-    opacity: 0.6
+    opacity: 0.7
   },
   btnInner: {
     flexDirection: 'row',
@@ -212,19 +333,8 @@ const styles = StyleSheet.create({
     gap: 8
   },
   loginBtnText: {
-    color: '#ffffff',
+    color: '#fff',
     fontSize: 15,
     fontWeight: '700'
-  },
-  footerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 28
-  },
-  footerText: {
-    fontSize: 12,
-    fontWeight: '500'
   }
 });

@@ -20,6 +20,8 @@ export interface User {
   id: number;
   username: string;
   email: string;
+  phone_number?: string | null;
+  profile_image?: string | null;
   full_name: string;
   role: Role;
   business_id?: number | null;
@@ -34,7 +36,19 @@ export interface User {
   shop_currency_symbol?: string | null;
   shop_currency_name?: string | null;
   temporary_password?: boolean;
+  requires_pin_setup?: boolean;
   is_active?: boolean;
+}
+
+export interface UserSession {
+  id: string;
+  deviceName: string | null;
+  deviceId: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  lastUsedAt: string;
+  expiresAt: string;
+  isCurrent?: boolean;
 }
 
 export interface Shop {

@@ -1,8 +1,22 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter, useSegments } from 'expo-router';
-import { authApi, shopApi, getAuthToken, setAuthToken, setActiveShopId, getActiveShopId } from '../services/api';
-import { User, Shop, Role } from '../types';
+import { 
+  authApi, 
+  shopApi, 
+  setAuthToken, 
+  setActiveShopId, 
+  getActiveShopId,
+  setOnSessionExpired
+} from '../services/api';
+import { User, Shop } from '../types';
 import { initApiConfig } from '../config/apiConfig';
+
+interface LoginParams {
+  phoneNumber?: string;
+  pin?: string;
+  identifier?: string;
+  password?: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -15,9 +29,13 @@ interface AuthContextType {
   currencyCode: string;
   currencySymbol: string;
   formatCurrency: (amount: number) => string;
-  login: (identifier: string, pass: string) => Promise<string>;
+  login: (credentials: LoginParams | string, maybePassword?: string) => Promise<string>;
+  loginWithPhone: (phone: string, pin: string) => Promise<string>;
+  loginWithCredentials: (identifier: string, pass: string) => Promise<string>;
   logout: () => Promise<void>;
+  logoutAll: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updateCurrentUser: (updated: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,7 +56,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const shops = res.data?.shops || [];
       setAvailableShops(shops);
 
-      // Auto-select shop if none active or current active invalid
       if (shops.length > 0) {
         const savedShopId = await getActiveShopId();
         const matched = shops.find((s) => s.id === savedShopId) || shops[0];
@@ -58,35 +75,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await setActiveShopId(shop ? shop.id : null);
   };
 
+  const updateCurrentUser = (updated: User) => {
+    setUser(prev => prev ? { ...prev, ...updated } : updated);
+  };
+
+  // Register session expiration callback to clear auth state on 401 refresh failure
+  useEffect(() => {
+    setOnSessionExpired(() => {
+      setTokenState(null);
+      setUser(null);
+      setActiveShopState(null);
+      setAvailableShops([]);
+      router.replace('/');
+    });
+  }, [router]);
+
+  // Initial Auth Restoration: Attempt silent refresh via HTTP-only cookie
   useEffect(() => {
     async function loadStoredAuth() {
       try {
         await initApiConfig();
-        const savedToken = await getAuthToken();
-        if (savedToken) {
-          setTokenState(savedToken);
-          try {
+
+        // 1. Attempt silent token refresh via HTTP-only cookie
+        try {
+          const refreshRes = await authApi.refresh();
+          if (refreshRes.data?.token) {
+            setTokenState(refreshRes.data.token);
+
+            // Fetch latest user profile and active shops
             const profileRes = await authApi.getProfile();
             if (profileRes.data) {
               const u = profileRes.data;
               setUser(u);
-              if (u.role === 'admin' || u.role === 'super_admin' || u.role === 'seller') {
-                const res = await shopApi.getAllShops();
-                const shops = res.data?.shops || [];
+
+              try {
+                const shopRes = await shopApi.getAllShops();
+                const shops = shopRes.data?.shops || [];
                 setAvailableShops(shops);
                 const savedShopId = await getActiveShopId();
                 const matched = shops.find((s) => s.id === savedShopId) || shops[0] || null;
                 setActiveShopState(matched);
                 if (matched) await setActiveShopId(matched.id);
+              } catch (sErr) {
+                console.warn('Could not load shops during session restoration:', sErr);
               }
             }
-          } catch (err) {
-            console.warn('Failed to restore session, token might be expired:', err);
-            await setAuthToken(null);
-            await setActiveShopId(null);
-            setTokenState(null);
-            setUser(null);
           }
+        } catch {
+          // No active cookie session or session expired; user starts at login
+          await setAuthToken(null);
+          await setActiveShopId(null);
+          setTokenState(null);
+          setUser(null);
         }
       } catch (err) {
         console.error('Error during auth initialization:', err);
@@ -98,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loadStoredAuth();
   }, []);
 
-  // Handle protected route redirection based on role
+  // Protected Route Guards
   useEffect(() => {
     if (isLoading) return;
 
@@ -106,10 +146,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const inAuthGroup = firstSegment === 'super-admin' || firstSegment === 'admin' || firstSegment === 'seller';
 
     if (!user && inAuthGroup) {
-      // Redirect to login if unauthenticated
       router.replace('/' as any);
     } else if (user && !inAuthGroup) {
-      // Redirect authenticated users to their specific dashboard
       if (user.role === 'super_admin') {
         router.replace('/super-admin' as any);
       } else if (user.role === 'admin') {
@@ -118,18 +156,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.replace('/seller' as any);
       }
     }
-  }, [user, segments, isLoading]);
+  }, [user, segments, isLoading, router]);
 
-  const login = async (identifier: string, pass: string): Promise<string> => {
+  /**
+   * Unified login supporting Phone+PIN or Username+Password
+   */
+  const login = async (credentials: LoginParams | string, maybePassword?: string): Promise<string> => {
     setIsLoading(true);
     try {
-      const res = await authApi.login(identifier, pass);
+      let payload: LoginParams;
+      if (typeof credentials === 'string') {
+        // Legacy call format: login(identifier, password)
+        // Detect if identifier looks like a phone number
+        if (/^(\+?255|0)[67]\d{8}$/.test(credentials.replace(/\s+/g, ''))) {
+          payload = { phoneNumber: credentials, pin: maybePassword };
+        } else {
+          payload = { identifier: credentials, password: maybePassword };
+        }
+      } else {
+        payload = credentials;
+      }
+
+      const res = await authApi.login(payload);
       if (res.data?.token && res.data?.user) {
         setTokenState(res.data.token);
         const loggedUser = res.data.user;
         setUser(loggedUser);
 
-        // Load shops
+        // Load shops for user
         try {
           const shopRes = await shopApi.getAllShops();
           const shops = shopRes.data?.shops || [];
@@ -151,10 +205,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginWithPhone = async (phoneNumber: string, pin: string): Promise<string> => {
+    return login({ phoneNumber, pin });
+  };
+
+  const loginWithCredentials = async (identifier: string, password: string): Promise<string> => {
+    return login({ identifier, password });
+  };
+
   const logout = async () => {
     setIsLoading(true);
     try {
       await authApi.logout();
+      setTokenState(null);
+      setUser(null);
+      setActiveShopState(null);
+      setAvailableShops([]);
+      router.replace('/');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logoutAll = async () => {
+    setIsLoading(true);
+    try {
+      await authApi.logoutAll();
       setTokenState(null);
       setUser(null);
       setActiveShopState(null);
@@ -176,7 +252,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Currency helpers
   const currencyCode = activeShop?.currency_code || user?.shop_currency || 'TZS';
   const currencySymbol = activeShop?.currency_symbol || user?.shop_currency_symbol || 'TSh';
 
@@ -203,8 +278,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         currencySymbol,
         formatCurrency,
         login,
+        loginWithPhone,
+        loginWithCredentials,
         logout,
-        refreshProfile
+        logoutAll,
+        refreshProfile,
+        updateCurrentUser
       }}
     >
       {children}

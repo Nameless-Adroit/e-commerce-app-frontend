@@ -16,6 +16,7 @@ import { authApi, businessApi, shopApi } from '../../services/api';
 import { useTheme, useStyles } from '../../context/ThemeContext';
 import { AppTheme } from '../../theme/colors';
 import { Business, Shop, User, Role } from '../../types';
+import { formatPhoneNumber } from '../../utils/phone';
 
 export default function SuperAdminUsers() {
   const { theme } = useTheme();
@@ -30,6 +31,8 @@ export default function SuperAdminUsers() {
   // Create User Form State
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [pin, setPin] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState<Role>('admin');
@@ -42,6 +45,13 @@ export default function SuperAdminUsers() {
   const [targetUser, setTargetUser] = useState<User | null>(null);
   const [newTempPassword, setNewTempPassword] = useState('');
   const [resetting, setResetting] = useState(false);
+
+  // Edit User Identity / PIN Modal State
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editFullName, setEditFullName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editPin, setEditPin] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   const loadData = async () => {
     try {
@@ -76,8 +86,8 @@ export default function SuperAdminUsers() {
   }, []);
 
   const handleCreateUser = async () => {
-    if (!username.trim() || !email.trim() || !password || !fullName.trim()) {
-      Alert.alert('Missing Fields', 'Please complete all required fields.');
+    if (!username.trim() || !email.trim() || !fullName.trim()) {
+      Alert.alert('Missing Fields', 'Please complete username, email, and full name.');
       return;
     }
 
@@ -96,7 +106,9 @@ export default function SuperAdminUsers() {
       await authApi.registerUser({
         username: username.trim(),
         email: email.trim(),
-        password,
+        phone_number: phoneNumber.trim() || undefined,
+        password: password || undefined,
+        pin: pin.trim() || undefined,
         full_name: fullName.trim(),
         role,
         business_id: role === 'admin' ? (selectedBusinessId || undefined) : undefined,
@@ -106,6 +118,8 @@ export default function SuperAdminUsers() {
       Alert.alert('User Created', `User '${username}' provisioned successfully.`);
       setUsername('');
       setEmail('');
+      setPhoneNumber('');
+      setPin('');
       setPassword('');
       setFullName('');
       setActiveTab('list');
@@ -114,6 +128,32 @@ export default function SuperAdminUsers() {
       Alert.alert('Creation Failed', err.message || 'Error creating user account');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleEditUser = async () => {
+    if (!targetUser) return;
+    if (!editFullName.trim()) {
+      Alert.alert('Missing Name', 'Full name cannot be empty.');
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      await authApi.updateUser(targetUser.id, {
+        full_name: editFullName.trim(),
+        phone_number: editPhone.trim() || undefined,
+        pin: editPin.trim() || undefined
+      });
+
+      Alert.alert('Success', 'User profile updated successfully.');
+      setEditModalVisible(false);
+      setTargetUser(null);
+      loadData();
+    } catch (err: any) {
+      Alert.alert('Update Failed', err.message || 'Could not update user profile.');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -214,6 +254,11 @@ export default function SuperAdminUsers() {
                       </View>
                     </View>
                     <Text style={styles.userEmail}>@{u.username} • {u.email}</Text>
+                    {u.phone_number ? (
+                      <Text style={[styles.userEmail, { marginTop: 2, color: theme.primary, fontWeight: '600' }]}>
+                        📱 {formatPhoneNumber(u.phone_number)}
+                      </Text>
+                    ) : null}
                     {u.business_name ? (
                       <Text style={styles.userBusiness}>🏢 {u.business_name} {u.shop_name ? `• 🏪 ${u.shop_name}` : ''}</Text>
                     ) : null}
@@ -233,12 +278,26 @@ export default function SuperAdminUsers() {
                       style={styles.actionBtn}
                       onPress={() => {
                         setTargetUser(u);
+                        setEditFullName(u.full_name || '');
+                        setEditPhone(u.phone_number || '');
+                        setEditPin('');
+                        setEditModalVisible(true);
+                      }}
+                    >
+                      <Ionicons name="create-outline" size={14} color={theme.primary} />
+                      <Text style={[styles.actionBtnText, { color: theme.primary }]}>Edit Profile & PIN</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.actionBtn}
+                      onPress={() => {
+                        setTargetUser(u);
                         setNewTempPassword('TempPass123!');
                         setResetModalVisible(true);
                       }}
                     >
-                      <Ionicons name="key-outline" size={14} color={theme.primary} />
-                      <Text style={[styles.actionBtnText, { color: theme.primary }]}>Reset Password</Text>
+                      <Ionicons name="key-outline" size={14} color={theme.textSecondary} />
+                      <Text style={[styles.actionBtnText, { color: theme.textSecondary }]}>Reset Password</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -375,7 +434,32 @@ export default function SuperAdminUsers() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.fieldLabel}>Initial Password (Temporary for Admins)</Text>
+              <Text style={styles.fieldLabel}>Mobile Phone Number (Login Identifier)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 0712 345 678"
+                placeholderTextColor={theme.textMuted}
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.fieldLabel}>Staff PIN (4-6 Digits for POS login)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 1234"
+                placeholderTextColor={theme.textMuted}
+                value={pin}
+                onChangeText={setPin}
+                keyboardType="number-pad"
+                maxLength={6}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.fieldLabel}>Initial Password (Optional / Admin fallback)</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Enter strong password"
@@ -434,6 +518,67 @@ export default function SuperAdminUsers() {
                 disabled={resetting}
               >
                 {resetting ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.submitBtnText}>Set Password</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit User Profile & PIN Modal */}
+      <Modal visible={editModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit User Profile & PIN</Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <Ionicons name="close" size={20} color={theme.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalDesc}>
+              Update profile identity and authorization PIN for <Text style={{ fontWeight: '700' }}>{targetUser?.full_name}</Text> (@{targetUser?.username}).
+            </Text>
+
+            <Text style={[styles.fieldLabel, { marginBottom: 4 }]}>Full Name</Text>
+            <TextInput
+              style={[styles.input, { marginBottom: 12 }]}
+              placeholder="Full Name"
+              placeholderTextColor={theme.textMuted}
+              value={editFullName}
+              onChangeText={setEditFullName}
+            />
+
+            <Text style={[styles.fieldLabel, { marginBottom: 4 }]}>Mobile Phone Number</Text>
+            <TextInput
+              style={[styles.input, { marginBottom: 12 }]}
+              placeholder="e.g. 0712 345 678"
+              placeholderTextColor={theme.textMuted}
+              value={editPhone}
+              onChangeText={setEditPhone}
+              keyboardType="phone-pad"
+            />
+
+            <Text style={[styles.fieldLabel, { marginBottom: 4 }]}>Assign New Staff PIN (Leave blank to keep unchanged)</Text>
+            <TextInput
+              style={[styles.input, { marginBottom: 16 }]}
+              placeholder="4-6 numeric digits"
+              placeholderTextColor={theme.textMuted}
+              value={editPin}
+              onChangeText={setEditPin}
+              keyboardType="number-pad"
+              maxLength={6}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditModalVisible(false)}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.submitBtn, { marginTop: 0 }, updating && { opacity: 0.7 }]}
+                onPress={handleEditUser}
+                disabled={updating}
+              >
+                {updating ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.submitBtnText}>Save Profile</Text>}
               </TouchableOpacity>
             </View>
           </View>
