@@ -767,6 +767,7 @@ export const subscriptionApi = {
   async renewSubscription(businessId: number, data: {
     plan_id: number;
     duration_days?: number;
+    amount?: number;
     payment_method: string;
     payment_reference?: string;
     notes?: string;
