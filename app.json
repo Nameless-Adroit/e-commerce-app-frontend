@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.jmsolutions.ecommerceapp",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/jmsolutions.png",

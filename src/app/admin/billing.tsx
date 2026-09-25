@@ -363,9 +363,9 @@ export default function AdminBillingScreen() {
                         styles.payStatusPill,
                         {
                           backgroundColor:
-                            p.status === 'verified'
+                            (p.status || 'verified').toLowerCase() === 'verified' || (p.status || 'verified').toLowerCase() === 'completed'
                               ? 'rgba(34, 197, 94, 0.15)'
-                              : p.status === 'rejected'
+                              : (p.status || '').toLowerCase() === 'rejected'
                               ? 'rgba(239, 68, 68, 0.15)'
                               : 'rgba(245, 158, 11, 0.15)'
                         }
@@ -376,15 +376,15 @@ export default function AdminBillingScreen() {
                           styles.payStatusPillText,
                           {
                             color:
-                              p.status === 'verified'
+                              (p.status || 'verified').toLowerCase() === 'verified' || (p.status || 'verified').toLowerCase() === 'completed'
                                 ? '#16a34a'
-                                : p.status === 'rejected'
+                                : (p.status || '').toLowerCase() === 'rejected'
                                 ? '#ef4444'
                                 : '#d97706'
                           }
                         ]}
                       >
-                        {p.status.toUpperCase()}
+                        {(p.status || 'verified').toUpperCase()}
                       </Text>
                     </View>
                   </View>

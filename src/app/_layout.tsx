@@ -8,6 +8,10 @@ import { ErrorView } from '../components/ErrorView';
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   const router = useRouter();
 
+  React.useEffect(() => {
+    console.error('[Root ErrorBoundary caught]:', error);
+  }, [error]);
+
   return (
     <ErrorView
       title="Application Error"

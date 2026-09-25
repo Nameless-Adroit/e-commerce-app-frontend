@@ -33,7 +33,7 @@ export function ErrorView({
           color: theme.warning,
           bgColor: 'rgba(217, 119, 6, 0.15)',
           defaultTitle: 'Connection Error',
-          defaultMessage: 'Unable to reach the POS server. Please check your internet connection or verify the backend service is active.'
+          defaultMessage: 'Unable to reach the POS server. Please check your internet connection'
         };
       case 'unauthorized':
         return {
@@ -41,7 +41,7 @@ export function ErrorView({
           color: theme.danger,
           bgColor: 'rgba(220, 38, 38, 0.15)',
           defaultTitle: 'Access Restricted',
-          defaultMessage: 'You do not have permission to access this resource or your session has expired.'
+          defaultMessage: 'You do not have permission to access this resource'
         };
       case 'not_found':
         return {
@@ -68,6 +68,16 @@ export function ErrorView({
   const rawErrorMessage = error instanceof Error ? error.message : typeof error === 'string' ? error : null;
   const stackTrace = error instanceof Error ? error.stack : null;
 
+  // Log technical error details to console instead of exposing on UI
+  React.useEffect(() => {
+    if (error) {
+      console.error('[Application Error Caught]:', error);
+      if (stackTrace) {
+        console.error('[Error Stack Trace]:', stackTrace);
+      }
+    }
+  }, [error, stackTrace]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -79,37 +89,6 @@ export function ErrorView({
 
         <Text style={styles.title}>{displayTitle}</Text>
         <Text style={styles.message}>{displayMessage}</Text>
-
-        {/* Technical Error Details Accordion */}
-        {rawErrorMessage ? (
-          <View style={styles.detailsBox}>
-            <TouchableOpacity
-              style={styles.detailsToggle}
-              onPress={() => setShowDetails(!showDetails)}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={showDetails ? 'chevron-down' : 'chevron-forward'}
-                size={16}
-                color={theme.textSecondary}
-              />
-              <Text style={styles.detailsToggleText}>
-                {showDetails ? 'Hide Technical Details' : 'View Error Details'}
-              </Text>
-            </TouchableOpacity>
-
-            {showDetails ? (
-              <View style={styles.detailsContent}>
-                <Text style={styles.detailsErrorText}>{rawErrorMessage}</Text>
-                {stackTrace ? (
-                  <Text style={styles.detailsStackText} numberOfLines={8}>
-                    {stackTrace}
-                  </Text>
-                ) : null}
-              </View>
-            ) : null}
-          </View>
-        ) : null}
 
         {/* Action Controls */}
         <View style={styles.actionContainer}>
