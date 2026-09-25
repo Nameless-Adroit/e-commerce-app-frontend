@@ -14,10 +14,11 @@ interface HeaderProps {
   title?: string;
   subtitle?: string;
   showBack?: boolean;
+  onBack?: () => void;
   rightAction?: React.ReactNode;
 }
 
-export function Header({ title = 'JM Solution POS', subtitle, showBack, rightAction }: HeaderProps) {
+export function Header({ title = 'JM Solution POS', subtitle, showBack, onBack, rightAction }: HeaderProps) {
   const { user, logout, activeShop, availableShops } = useAuth();
   const { theme } = useTheme();
   const router = useRouter();
@@ -34,11 +35,11 @@ export function Header({ title = 'JM Solution POS', subtitle, showBack, rightAct
   const getRoleLabel = (role?: string) => {
     switch (role) {
       case 'super_admin':
-        return { text: 'SUPER', variant: 'danger' as const };
+        return { text: 'PLATFORM', variant: 'danger' as const };
       case 'admin':
-        return { text: 'ADMIN', variant: 'primary' as const };
+        return { text: 'OWNER', variant: 'primary' as const };
       case 'seller':
-        return { text: 'SELLER', variant: 'success' as const };
+        return { text: 'CASHIER', variant: 'success' as const };
       default:
         return { text: 'USER', variant: 'neutral' as const };
     }
@@ -83,7 +84,7 @@ export function Header({ title = 'JM Solution POS', subtitle, showBack, rightAct
           <View style={styles.leftCol}>
             {showBack ? (
               <TouchableOpacity 
-                onPress={() => router.back()} 
+                onPress={() => onBack ? onBack() : router.back()} 
                 style={[styles.backBtn, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]} 
                 activeOpacity={0.7}
               >
@@ -107,23 +108,24 @@ export function Header({ title = 'JM Solution POS', subtitle, showBack, rightAct
           </View>
 
           <View style={styles.rightCol}>
-            {/* Admin Shop Switcher Pill */}
-            {user?.role === 'admin' && availableShops.length > 0 && (
+            {/* Admin Shop Switcher Pill or Role Badge */}
+            {user?.role === 'admin' && availableShops.length > 0 ? (
               <TouchableOpacity
                 onPress={() => setShopSelectorOpen(true)}
                 style={[styles.shopSwitcherBtn, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]}
                 activeOpacity={0.75}
               >
-                <Ionicons name="storefront-outline" size={14} color={theme.primary} />
+                <Ionicons name="storefront-outline" size={13} color={theme.primary} />
                 <Text style={[styles.shopSwitcherText, { color: theme.text }]} numberOfLines={1}>
                   {activeShop ? activeShop.shop_code : 'Shop'}
                 </Text>
-                <Ionicons name="chevron-down" size={12} color={theme.textMuted} />
+                <Ionicons name="chevron-down" size={11} color={theme.textMuted} />
               </TouchableOpacity>
+            ) : (
+              !rightAction && <Badge label={roleInfo.text} variant={roleInfo.variant} />
             )}
 
             {rightAction}
-            {!rightAction && <Badge label={roleInfo.text} variant={roleInfo.variant} />}
             
             {/* Settings Gear Button */}
             <TouchableOpacity 
@@ -131,7 +133,7 @@ export function Header({ title = 'JM Solution POS', subtitle, showBack, rightAct
               style={[styles.iconBtn, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]} 
               activeOpacity={0.7}
             >
-              <Ionicons name="settings-outline" size={18} color={theme.text} />
+              <Ionicons name="settings-outline" size={17} color={theme.text} />
             </TouchableOpacity>
 
             {/* Logout Button with Confirmation */}
@@ -140,7 +142,7 @@ export function Header({ title = 'JM Solution POS', subtitle, showBack, rightAct
               style={styles.logoutBtn} 
               activeOpacity={0.7}
             >
-              <Ionicons name="log-out-outline" size={18} color={theme.danger} />
+              <Ionicons name="log-out-outline" size={17} color={theme.danger} />
             </TouchableOpacity>
           </View>
         </View>
@@ -176,64 +178,68 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 14
+    paddingHorizontal: 14,
+    paddingTop: 6,
+    paddingBottom: 10
   },
   leftCol: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
-    marginRight: 12
+    marginRight: 8,
+    minWidth: 0
   },
   titleWrapper: {
-    flex: 1
+    flex: 1,
+    minWidth: 0
   },
   headerLogoContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF'
+    backgroundColor: '#FFFFFF',
+    flexShrink: 0
   },
   headerLogo: {
     width: '100%',
     height: '100%',
-    borderRadius: 18,
+    borderRadius: 17,
     transform: [{ scale: 1.05 }]
   },
   backBtn: {
-    padding: 7,
-    borderRadius: 10,
-    borderWidth: 1
+    padding: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexShrink: 0
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: -0.3
+    letterSpacing: -0.2
   },
   subtitle: {
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 11,
+    marginTop: 1,
     fontWeight: '500'
   },
   rightCol: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     flexShrink: 0
   },
   iconBtn: {
-    padding: 8,
-    borderRadius: 10,
+    padding: 6,
+    borderRadius: 8,
     borderWidth: 1
   },
   logoutBtn: {
-    padding: 8,
-    borderRadius: 10,
+    padding: 6,
+    borderRadius: 8,
     backgroundColor: 'rgba(220, 38, 38, 0.08)',
     borderWidth: 1,
     borderColor: 'rgba(220, 38, 38, 0.16)'
@@ -241,15 +247,15 @@ const styles = StyleSheet.create({
   shopSwitcherBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 8,
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+    borderRadius: 7,
     borderWidth: 1,
-    maxWidth: 95
+    maxWidth: 75
   },
   shopSwitcherText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700'
   }
 });

@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Header } from '../../components/Header';
 import { ShopSelectorModal } from '../../components/ShopSelectorModal';
+import { SubscriptionBanner } from '../../components/SubscriptionBanner';
 import { analyticsApi, productApi, shopApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, useStyles } from '../../context/ThemeContext';
@@ -24,7 +25,7 @@ import { formatCurrency } from '../../utils/currency';
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { user, activeShop, availableShops, setActiveShop, refreshShops, currencySymbol } = useAuth();
+  const { user, isLoading, activeShop, availableShops, setActiveShop, refreshShops, currencySymbol } = useAuth();
   const { theme } = useTheme();
   const styles = useStyles(createStyles);
 
@@ -72,8 +73,9 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
+    if (!user || isLoading || user.role !== 'admin') return;
     loadData();
-  }, [activeShop]);
+  }, [user, isLoading, activeShop]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -119,8 +121,8 @@ export default function AdminDashboard() {
   return (
     <View style={styles.container}>
       <Header 
-        title="JM Solution POS" 
-        subtitle={user?.business_name ? `${user.business_name} (${user.business_code || 'BIZ'})` : 'Store Operations'} 
+        title="Store Operations" 
+        subtitle={user?.business_name || 'Business Dashboard'} 
       />
 
       {loading ? (
@@ -133,6 +135,9 @@ export default function AdminDashboard() {
           contentContainerStyle={styles.scrollContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
         >
+          {/* Real-time Dynamic Subscription Expiration & Warning Banner */}
+          <SubscriptionBanner />
+
           {/* Business Information Card */}
           <View style={styles.businessHeaderCard}>
             <View style={styles.businessHeaderTop}>
@@ -174,6 +179,24 @@ export default function AdminDashboard() {
 
           {/* Quick Action Navigation Grid */}
           <View style={styles.actionGrid}>
+            <TouchableOpacity 
+              style={[styles.actionCard, { backgroundColor: 'rgba(99, 102, 241, 0.12)', borderColor: theme.primary }]}
+              onPress={() => router.push('/admin/billing' as any)}
+            >
+              <Ionicons name="card" size={26} color={theme.primary} />
+              <Text style={styles.actionTitle}>Plan & Billing</Text>
+              <Text style={styles.actionSub}>{user?.days_remaining !== undefined ? `${user.days_remaining}d remaining` : 'Subscription'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.actionCard, { backgroundColor: 'rgba(14, 165, 233, 0.12)', borderColor: theme.secondary }]}
+              onPress={() => router.push('/admin/sellers' as any)}
+            >
+              <Ionicons name="people" size={26} color={theme.secondary} />
+              <Text style={styles.actionTitle}>Cashiers</Text>
+              <Text style={styles.actionSub}>Staff & Accounts</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity 
               style={[styles.actionCard, { backgroundColor: 'rgba(245, 158, 11, 0.12)', borderColor: theme.warning }]}
               onPress={() => setRequestShopModalVisible(true)}

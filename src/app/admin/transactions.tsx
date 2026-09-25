@@ -49,7 +49,7 @@ function formatDisplayDate(dateStr: string): string {
 
 export default function AdminTransactions() {
   const { theme } = useTheme();
-  const { activeShop, currencySymbol } = useAuth();
+  const { user, isLoading, activeShop, currencySymbol } = useAuth();
   const styles = useStyles(createStyles);
   const params = useLocalSearchParams<{ date?: string }>();
   const todayStr = useMemo(() => formatDateToISO(new Date()), []);
@@ -97,8 +97,9 @@ export default function AdminTransactions() {
   }, [params.date]);
 
   useEffect(() => {
+    if (!user || isLoading || user.role !== 'admin') return;
     fetchTransactionsForDate(selectedDate);
-  }, [selectedDate, activeShop]);
+  }, [user, isLoading, selectedDate, activeShop]);
 
   const handlePrevDay = () => {
     const current = parseISODate(selectedDate);
@@ -163,8 +164,8 @@ export default function AdminTransactions() {
   return (
     <View style={styles.container}>
       <Header 
-        title="Transaction History" 
-        subtitle="Sales Journal & Digital Receipts" 
+        title="Sales Journal" 
+        subtitle="Audit & digital receipts" 
       />
 
       {/* Date Navigation Bar */}

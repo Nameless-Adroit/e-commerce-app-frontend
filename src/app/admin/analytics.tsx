@@ -10,6 +10,7 @@ import {
   RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Header } from '../../components/Header';
 import { analyticsApi } from '../../services/api';
 import { useTheme, useStyles } from '../../context/ThemeContext';
@@ -21,8 +22,9 @@ import { formatCurrency } from '../../utils/currency';
 type TimeFilter = 'TODAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'ALL_TIME';
 
 export default function AdminAnalytics() {
+  const router = useRouter();
   const { theme } = useTheme();
-  const { activeShop, currencySymbol } = useAuth();
+  const { user, isLoading, activeShop, currencySymbol } = useAuth();
   const styles = useStyles(createStyles);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('THIS_MONTH');
   const [reportData, setReportData] = useState<ProductsSoldReportResponse | null>(null);
@@ -84,8 +86,9 @@ export default function AdminAnalytics() {
   };
 
   useEffect(() => {
+    if (!user || isLoading || user.role !== 'admin') return;
     loadReport();
-  }, [timeFilter, selectedCategory, activeShop]);
+  }, [user, isLoading, timeFilter, selectedCategory, activeShop]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -112,8 +115,10 @@ export default function AdminAnalytics() {
   return (
     <View style={styles.container}>
       <Header
-        title="Products Sold Report"
-        subtitle="Tabular summary of product volume, turnover & movement"
+        title="Daily Close"
+        subtitle="Sales turnover & reconciliation report"
+        showBack={true}
+        onBack={() => router.back()}
       />
 
       <ScrollView

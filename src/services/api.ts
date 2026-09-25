@@ -18,7 +18,12 @@ import {
   TopProduct,
   ProductSoldReportItem,
   ProductsSoldReportResponse,
-  DailyReconciliation
+  DailyReconciliation,
+  SubscriptionPlan,
+  SubscriptionPayment,
+  PaymentMethodConfig,
+  PlatformConfig,
+  BusinessRegistrationPayload
 } from '../types';
 
 const TOKEN_KEY = 'POS_AUTH_TOKEN';
@@ -80,6 +85,19 @@ export async function getActiveShopId(): Promise<number | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Sanitizes server error messages: ensures no technical token/JWT/crypto jargon
+ * is ever rendered to the end-user. Logs technical details to console.warn.
+ */
+function sanitizeMobileErrorMessage(msg?: string | null): string {
+  if (!msg) return 'The requested operation could not be completed. Please try again.';
+  if (/token|jwt|bearer|malformed|signature|refresh_token|expired/i.test(msg)) {
+    console.warn('[AUTH_SECURITY_LOG] Sanitized internal authentication error:', msg);
+    return 'Your session has expired. Please sign in to continue.';
+  }
+  return msg;
 }
 
 /**
@@ -176,9 +194,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       : null;
 
     if (!response.ok) {
-      const errorMsg = json?.message || (response.status >= 500
+      const rawMsg = json?.message || (response.status >= 500
         ? 'Store service is temporarily unavailable. Please try again in a few moments.'
         : 'The requested operation could not be completed. Please try again.');
+      const errorMsg = sanitizeMobileErrorMessage(rawMsg);
       const err = new Error(errorMsg);
       (err as any).statusCode = response.status;
       (err as any).response = json;
@@ -202,6 +221,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
     if (isNetworkIssue) {
       throw new Error('No internet connection. Please check your network connection and try again.');
+    }
+
+    if (err.message) {
+      err.message = sanitizeMobileErrorMessage(err.message);
     }
     throw err;
   }
@@ -345,8 +368,8 @@ export const authApi = {
   },
 
   async registerUser(userData: {
-    username: string;
-    email: string;
+    username?: string;
+    email?: string;
     phone_number?: string;
     password?: string;
     pin?: string;
@@ -374,6 +397,18 @@ export const authApi = {
     return request<ApiResponse<User>>(`/auth/users/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(updateData)
+    });
+  },
+
+  async registerBusiness(data: BusinessRegistrationPayload): Promise<ApiResponse<{
+    business: Business;
+    admin: User;
+    plan: SubscriptionPlan;
+    instructions?: string;
+  }>> {
+    return request<ApiResponse<any>>('/auth/register-business', {
+      method: 'POST',
+      body: JSON.stringify(data)
     });
   }
 };
@@ -682,3 +717,68 @@ export const businessApi = {
     return request<ApiResponse<any>>(endpoint);
   }
 };
+
+// -----------------------------------------------------------------------------
+// Platform API (Public Configuration & Payment Methods)
+// -----------------------------------------------------------------------------
+export const platformApi = {
+  async getConfig(): Promise<ApiResponse<PlatformConfig>> {
+    return request<ApiResponse<PlatformConfig>>('/platform/config');
+  },
+
+  async getPaymentMethods(): Promise<ApiResponse<PaymentMethodConfig[]>> {
+    return request<ApiResponse<PaymentMethodConfig[]>>('/platform/payment-methods');
+  }
+};
+
+// -----------------------------------------------------------------------------
+// Subscription & Billing API
+// -----------------------------------------------------------------------------
+export const subscriptionApi = {
+  async getPublicPlans(): Promise<ApiResponse<{ plans: SubscriptionPlan[] }>> {
+    return request<ApiResponse<{ plans: SubscriptionPlan[] }>>('/subscriptions/plans');
+  },
+
+  async getBusinessSubscription(businessId?: number): Promise<ApiResponse<{
+    business_id: number;
+    business_name: string;
+    subscription_status: string;
+    subscription_start_date: string;
+    subscription_end_date: string;
+    plan: SubscriptionPlan;
+    days_remaining: number;
+    is_expired: boolean;
+    warning_level: string;
+    active_shops_count: number;
+    active_sellers_count: number;
+    max_shops: number;
+    max_sellers: number;
+    payments: SubscriptionPayment[];
+  }>> {
+    const endpoint = businessId ? `/subscriptions/${businessId}` : '/subscriptions/my';
+    return request<ApiResponse<any>>(endpoint);
+  },
+
+  async getPayments(businessId?: number): Promise<ApiResponse<{ payments: SubscriptionPayment[] }>> {
+    const qs = businessId ? `?business_id=${businessId}` : '';
+    return request<ApiResponse<{ payments: SubscriptionPayment[] }>>(`/subscriptions/payments${qs}`);
+  },
+
+  async renewSubscription(businessId: number, data: {
+    plan_id: number;
+    duration_days?: number;
+    payment_method: string;
+    payment_reference?: string;
+    notes?: string;
+  }): Promise<ApiResponse<{
+    message: string;
+    payment: SubscriptionPayment;
+    subscription: any;
+  }>> {
+    return request<ApiResponse<any>>(`/subscriptions/business/${businessId}/renew`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  }
+};
+

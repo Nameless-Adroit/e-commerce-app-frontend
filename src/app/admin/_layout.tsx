@@ -41,7 +41,7 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="transactions"
         options={{
-          title: 'Transactions',
+          title: 'Sales',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={size} color={color} />
           ),
@@ -57,21 +57,33 @@ export default function AdminLayout() {
         }}
       />
       <Tabs.Screen
+        name="sellers"
+        options={{
+          title: 'Staff',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="billing"
+        options={{
+          title: 'Billing',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'card' : 'card-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="add-product"
         options={{
-          title: 'Add Product',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={size} color={color} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen
         name="analytics"
         options={{
-          title: 'Daily Close',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={size} color={color} />
-          ),
+          href: null,
         }}
       />
     </Tabs>

@@ -37,7 +37,7 @@ export function PriceModal({ visible, product, onClose, onSuccess }: PriceModalP
     const numReorder = parseInt(reorderLevel, 10) || 5;
 
     if (isNaN(numPrice) || numPrice < 0) {
-      Alert.alert('Invalid Price', 'Please enter a valid retail price.');
+      Alert.alert('Invalid Price', 'Please enter a valid selling price.');
       return;
     }
 
@@ -81,7 +81,7 @@ export function PriceModal({ visible, product, onClose, onSuccess }: PriceModalP
             onChangeText={setPrice}
           />
 
-          <Text style={styles.label}>Cost / Wholesale Price ({symbol})</Text>
+          <Text style={styles.label}>Buying Price ({symbol})</Text>
           <TextInput
             style={styles.input}
             placeholder="0"

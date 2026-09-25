@@ -34,7 +34,6 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [showPin, setShowPin] = useState(false);
 
   const handleSubmit = async () => {
     if (!oldPin || !newPin) {
@@ -106,7 +105,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             <View style={styles.inputRow}>
               <TextInput
                 style={styles.input}
-                secureTextEntry={!showPin}
+                secureTextEntry={true}
                 placeholder="Enter current PIN"
                 placeholderTextColor={theme.textMuted}
                 value={oldPin}
@@ -114,20 +113,13 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 keyboardType="number-pad"
                 maxLength={6}
               />
-              <TouchableOpacity onPress={() => setShowPin(!showPin)}>
-                <Ionicons
-                  name={showPin ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={theme.textMuted}
-                />
-              </TouchableOpacity>
             </View>
 
             <Text style={styles.label}>New Permanent 6-Digit PIN</Text>
             <View style={styles.inputRow}>
               <TextInput
                 style={styles.input}
-                secureTextEntry={!showPin}
+                secureTextEntry={true}
                 placeholder="6 numeric digits (e.g. 123456)"
                 placeholderTextColor={theme.textMuted}
                 value={newPin}
@@ -141,7 +133,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             <View style={styles.inputRow}>
               <TextInput
                 style={styles.input}
-                secureTextEntry={!showPin}
+                secureTextEntry={true}
                 placeholder="Re-enter 6-digit PIN"
                 placeholderTextColor={theme.textMuted}
                 value={confirmPin}

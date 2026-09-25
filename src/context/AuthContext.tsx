@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { Alert } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { 
   authApi, 
@@ -143,28 +144,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isLoading) return;
 
     const firstSegment = (segments[0] as string) || '';
-    const inAuthGroup = firstSegment === 'super-admin' || firstSegment === 'admin' || firstSegment === 'seller';
+    const inAuthGroup = firstSegment === 'admin' || firstSegment === 'seller';
 
     if (!user && inAuthGroup) {
       router.replace('/' as any);
     } else if (user) {
+      // Platform Owner (super_admin) is exclusively supported on the Super Admin Web Gateway
+      if (user.role === 'super_admin') {
+        console.warn('[AUTH_SECURITY_LOG] Platform Owner cannot operate in mobile cashier. Silently signing out.');
+        logout();
+        return;
+      }
+
       if (!inAuthGroup) {
-        if (user.role === 'super_admin') {
-          router.replace('/super-admin' as any);
-        } else if (user.role === 'admin') {
+        if (user.role === 'admin') {
           router.replace('/admin' as any);
         } else if (user.role === 'seller') {
           router.replace('/seller' as any);
         }
       } else {
         // Enforce strict role boundaries:
-        // Admin is restricted to reports/management in /admin and CANNOT access /seller (POS)
-        if (user.role === 'admin' && (firstSegment === 'seller' || firstSegment === 'super-admin')) {
+        // Business Owner is restricted to reports/management in /admin and CANNOT access /seller (POS)
+        if (user.role === 'admin' && firstSegment === 'seller') {
           router.replace('/admin' as any);
-        } else if (user.role === 'seller' && (firstSegment === 'admin' || firstSegment === 'super-admin')) {
+        } else if (user.role === 'seller' && firstSegment === 'admin') {
           router.replace('/seller' as any);
-        } else if (user.role === 'super_admin' && firstSegment === 'seller') {
-          router.replace('/super-admin' as any);
         }
       }
     }
@@ -185,8 +189,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const res = await authApi.login(payload);
       if (res.data?.token && res.data?.user) {
-        setTokenState(res.data.token);
         const loggedUser = res.data.user;
+
+        // Platform Owner accounts are exclusively supported on the desktop Web Gateway
+        if (loggedUser.role === 'super_admin') {
+          console.warn('[AUTH_SECURITY_LOG] Platform Owner login attempted on mobile counter. Rejecting.');
+          throw new Error('INVALID CREDENTIALS');
+        }
+
+        setTokenState(res.data.token);
         setUser(loggedUser);
 
         // Load shops for user
@@ -205,7 +216,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return res.data.redirect_url;
       }
-      throw new Error(res.message || 'Login failed');
+      throw new Error('INVALID CREDENTIALS');
+    } catch (err: any) {
+      console.error('[MOBILE_AUTH_LOG]', {
+        message: err.message,
+        status: err.status,
+        code: err.code,
+        timestamp: new Date().toISOString()
+      });
+
+      const isNetworkOrServer =
+        err.status >= 500 ||
+        err.status === 408 ||
+        err.status === 429 ||
+        (err.message && (
+          err.message.toLowerCase().includes('network') ||
+          err.message.toLowerCase().includes('server') ||
+          err.message.toLowerCase().includes('timed out') ||
+          err.message.toLowerCase().includes('cannot execute') ||
+          err.message.toLowerCase().includes('failed to fetch')
+        ));
+
+      if (isNetworkOrServer) {
+        throw new Error('CANNOT EXECUTE NOW TRY LATER');
+      } else {
+        throw new Error('INVALID CREDENTIALS');
+      }
     } finally {
       setIsLoading(false);
     }

@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { Header } from '../../components/Header';
 import { ScannerModal } from '../../components/ScannerModal';
 import { ProductDetailModal } from '../../components/ProductDetailModal';
+import { SubscriptionBanner } from '../../components/SubscriptionBanner';
 import { useCart } from '../../context/CartContext';
 import { posApi, productApi, analyticsApi } from '../../services/api';
 import { useTheme, useStyles } from '../../context/ThemeContext';
@@ -26,7 +27,7 @@ import { formatCurrency } from '../../utils/currency';
 export default function SellerCounterScreen() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { user, activeShop, currencySymbol } = useAuth();
+  const { user, isLoading, activeShop, currencySymbol } = useAuth();
   const styles = useStyles(createStyles);
   const { addItem, items, totalUnits, totalAmount } = useCart();
 
@@ -40,8 +41,9 @@ export default function SellerCounterScreen() {
   const [selectedDetailProduct, setSelectedDetailProduct] = useState<Product | null>(null);
 
   useEffect(() => {
+    if (!user || isLoading || user.role !== 'seller') return;
     loadData();
-  }, [activeShop]);
+  }, [user, isLoading, activeShop]);
 
   const loadData = async () => {
     setLoading(true);
@@ -117,6 +119,9 @@ export default function SellerCounterScreen() {
           </TouchableOpacity>
         }
       />
+
+      {/* Store Subscription Warning Banner for Sellers */}
+      <SubscriptionBanner compact />
 
       {user?.role === 'admin' && (
         <View style={styles.adminBanner}>

@@ -57,7 +57,7 @@ export default function AddProductScreen() {
 
   const handleSubmit = async () => {
     if (!name.trim() || !price) {
-      Alert.alert('Missing Info', 'Product Name and Retail Selling Price are required.');
+      Alert.alert('Missing Info', 'Product Name and Selling Price are required.');
       return;
     }
 
@@ -94,7 +94,12 @@ export default function AddProductScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Add New Product" subtitle="Unique ID Generation & Inventory Entry" />
+      <Header 
+        title="Add Product" 
+        subtitle="Catalog & barcode generation" 
+        showBack={true} 
+        onBack={() => router.back()} 
+      />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
@@ -170,7 +175,7 @@ export default function AddProductScreen() {
 
           <View style={styles.rowInputs}>
             <View style={styles.halfCol}>
-              <Text style={styles.label}>Retail Price (TSh) *</Text>
+              <Text style={styles.label}>Selling Price (TSh) *</Text>
               <TextInput
                 style={styles.input}
                 placeholder="50000"
@@ -182,7 +187,7 @@ export default function AddProductScreen() {
             </View>
 
             <View style={styles.halfCol}>
-              <Text style={styles.label}>Cost Price (TSh)</Text>
+              <Text style={styles.label}>Buying Price (TSh)</Text>
               <TextInput
                 style={styles.input}
                 placeholder="25000"

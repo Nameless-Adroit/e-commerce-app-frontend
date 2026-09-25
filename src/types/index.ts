@@ -8,6 +8,19 @@ export interface Business {
   currency_symbol: string;
   currency_name: string;
   status: 'active' | 'suspended';
+  subscription_status?: 'trial' | 'active' | 'grace_period' | 'expired' | 'suspended';
+  subscription_start_date?: string;
+  subscription_end_date?: string;
+  subscription_plan_id?: number;
+  subscription_plan_name?: string;
+  subscription_plan_code?: string;
+  max_shops?: number;
+  max_sellers?: number;
+  auto_renew?: boolean;
+  notes?: string;
+  days_remaining?: number;
+  warning_level?: 'none' | 'info_30d' | 'warning_7d' | 'urgent_3d' | 'critical_1d' | 'expired';
+  is_expired?: boolean;
   shops_count?: number;
   admins_count?: number;
   sellers_count?: number;
@@ -39,6 +52,11 @@ export interface User {
   temporary_password?: boolean;
   requires_pin_setup?: boolean;
   is_active?: boolean;
+  subscription_status?: 'trial' | 'active' | 'grace_period' | 'expired' | 'suspended';
+  subscription_end_date?: string;
+  days_remaining?: number;
+  warning_level?: 'none' | 'info_30d' | 'warning_7d' | 'urgent_3d' | 'critical_1d' | 'expired';
+  is_subscription_expired?: boolean;
 }
 
 export interface UserSession {
@@ -293,5 +311,83 @@ export interface ApiResponse<T = any> {
   data?: T;
   stack?: string;
 }
+
+export interface SubscriptionPlan {
+  id: number;
+  plan_code: string;
+  name: string;
+  description?: string | null;
+  price_tzs: number;
+  duration_days: number;
+  max_shops: number;
+  max_sellers: number;
+  is_active: boolean;
+  sort_order?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SubscriptionPayment {
+  id: number;
+  business_id: number;
+  business_name?: string;
+  business_code?: string;
+  plan_id: number;
+  plan_name?: string;
+  plan_code?: string;
+  amount: number;
+  currency: string;
+  duration_days: number;
+  payment_method: string;
+  payment_reference?: string | null;
+  status: 'pending' | 'verified' | 'rejected';
+  notes?: string | null;
+  verified_by_user_id?: number | null;
+  verified_by_name?: string | null;
+  verified_at?: string | null;
+  created_at: string;
+}
+
+export interface PaymentMethodConfig {
+  id: number;
+  name?: string;
+  type?: string;
+  channel_type: 'mobile_money' | 'bank_transfer' | 'cash';
+  provider_name: string;
+  account_name: string;
+  account_number: string;
+  instructions?: string;
+  is_active: boolean;
+}
+
+export interface PlatformConfig {
+  plans: SubscriptionPlan[];
+  payment_methods: PaymentMethodConfig[];
+  settings: {
+    platform_name: string;
+    support_phone: string;
+    support_email: string;
+    terms_and_conditions: string;
+    privacy_policy: string;
+    registration_instructions: string;
+  };
+}
+
+export interface BusinessRegistrationPayload {
+  business_name: string;
+  currency_code?: string;
+  currency_symbol?: string;
+  currency_name?: string;
+  plan_id?: number;
+  admin_name: string;
+  phone_number: string;
+  email?: string;
+  pin: string;
+  terms_accepted: boolean;
+  payment_method?: string;
+  payment_reference?: string;
+  payment_notes?: string;
+}
+
 
 

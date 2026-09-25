@@ -29,7 +29,7 @@ import { formatCurrency } from '../../utils/currency';
 
 export default function AdminProducts() {
   const router = useRouter();
-  const { activeShop, currencySymbol } = useAuth();
+  const { user, isLoading, activeShop, currencySymbol } = useAuth();
   const { theme } = useTheme();
   const styles = useStyles(createStyles);
   const [products, setProducts] = useState<Product[]>([]);
@@ -63,8 +63,9 @@ export default function AdminProducts() {
   };
 
   useEffect(() => {
+    if (!user || isLoading || user.role !== 'admin') return;
     loadProducts();
-  }, [filterLowStock, activeShop]);
+  }, [user, isLoading, filterLowStock, activeShop]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -104,7 +105,7 @@ export default function AdminProducts() {
     <View style={styles.container}>
       <Header 
         title="Store Inventory" 
-        subtitle="Pricing, Stock & Shrinkage" 
+        subtitle="Catalog & Stock Levels" 
         rightAction={
           <TouchableOpacity onPress={() => router.push('/admin/add-product' as any)} style={styles.addHeaderBtn}>
             <Ionicons name="add" size={20} color="#fff" />
@@ -185,11 +186,11 @@ export default function AdminProducts() {
 
                 <View style={styles.priceRow}>
                   <View>
-                    <Text style={styles.metaLabel}>Retail Price</Text>
+                    <Text style={styles.metaLabel}>Selling Price</Text>
                     <Text style={styles.priceVal}>{formatCurrency(item.price, item.currency_symbol || currencySymbol)}</Text>
                   </View>
                   <View>
-                    <Text style={styles.metaLabel}>Cost Price</Text>
+                    <Text style={styles.metaLabel}>Buying Price</Text>
                     <Text style={styles.costVal}>{formatCurrency(item.cost_price, item.currency_symbol || currencySymbol)}</Text>
                   </View>
                   <View>

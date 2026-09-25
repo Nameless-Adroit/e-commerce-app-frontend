@@ -90,7 +90,7 @@ export function ProductDetailModal({
             {/* Price & Stock Badges */}
             <View style={styles.metricRow}>
               <View style={styles.priceCol}>
-                <Text style={styles.metricLabel}>Retail Price</Text>
+                <Text style={styles.metricLabel}>Selling Price</Text>
                 <Text style={styles.priceValue}>{formatCurrency(product.price, product.currency_symbol)}</Text>
               </View>
 
