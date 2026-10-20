@@ -1,7 +1,7 @@
 import React from 'react';
 import { LogBox } from 'react-native';
 import { Stack, useRouter, ErrorBoundaryProps } from 'expo-router';
-import { AuthProvider } from '../context/AuthContext';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 import { CartProvider } from '../context/CartContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { ErrorView } from '../components/ErrorView';
@@ -41,13 +41,18 @@ function RootNavigation() {
   );
 }
 
+function ScopedCart({ children }: { children: React.ReactNode }) {
+  const { user, activeShop } = useAuth();
+  return <CartProvider key={`${user?.id || 'guest'}-${activeShop?.id || 'none'}`}>{children}</CartProvider>;
+}
+
 export default function RootLayout() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <CartProvider>
+        <ScopedCart>
           <RootNavigation />
-        </CartProvider>
+        </ScopedCart>
       </AuthProvider>
     </ThemeProvider>
   );

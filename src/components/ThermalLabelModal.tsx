@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { Product } from '../types';
 import { formatCurrency } from '../utils/currency';
-import { productApi } from '../services/api';
-import * as WebBrowser from 'expo-web-browser';
+import { productApi, getAuthToken } from '../services/api';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { File, Paths } from 'expo-file-system';
 
 interface ThermalLabelModalProps {
   visible: boolean;
@@ -35,165 +37,50 @@ export function ThermalLabelModal({
   const [copies, setCopies] = useState<number>(1);
   const [printing, setPrinting] = useState(false);
 
+  const [qrData, setQrData] = useState<{ id: string; uri: string } | null>(null);
+  const qrUrl = qrData?.id === product?.id ? qrData?.uri : '';
+
+  const [qrError, setQrError] = useState('');
+  const busy = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    if (visible && product) productApi.getQRCode(product.id).then(response => {
+      if (!cancelled) { setQrData({ id: product.id, uri: response.data?.data_uri || '' }); setQrError(''); }
+    }).catch(error => { if (!cancelled) setQrError(error.message || 'QR preview unavailable.'); });
+    return () => { cancelled = true; };
+  }, [visible, product?.id]);
+
   if (!product) return null;
-
   const symbol = product.currency_symbol || 'TSh';
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-    product.id
-  )}&margin=4`;
-
-  const handlePrintThermal = () => {
+  const openPDF = async (format: 'thermal' | 'a4', share = false) => {
+    if (busy.current) return;
+    busy.current = true;
     setPrinting(true);
+    let file: File | undefined;
     try {
+      const url = await productApi.getQRLabelsUrl(product.id, copies, format, Platform.OS === 'web');
       if (Platform.OS === 'web') {
-        const printWindow = window.open('', '_blank', 'width=450,height=400');
-        if (printWindow) {
-          const htmlContent = `
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <meta charset="utf-8" />
-                <title>Thermal Label - ${product.id}</title>
-                <style>
-                  @page {
-                    size: 50mm 30mm;
-                    margin: 0;
-                  }
-                  body {
-                    margin: 0;
-                    padding: 0;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-                    background: #fff;
-                    color: #000;
-                  }
-                  .label-sheet {
-                    display: flex;
-                    flex-direction: column;
-                  }
-                  .label {
-                    width: 50mm;
-                    height: 30mm;
-                    box-sizing: border-box;
-                    padding: 2mm 3mm;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-between;
-                    page-break-after: always;
-                    text-align: center;
-                  }
-                  .shop-name {
-                    font-size: 8px;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    margin-bottom: 1px;
-                  }
-                  .product-name {
-                    font-size: 10px;
-                    font-weight: 700;
-                    line-height: 1.1;
-                    max-height: 22px;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    display: -webkit-box;
-                    -webkit-line-clamp: 2;
-                    -webkit-box-orient: vertical;
-                  }
-                  .middle-row {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 8px;
-                    margin: 1mm 0;
-                  }
-                  .qr-img {
-                    width: 17mm;
-                    height: 17mm;
-                    display: block;
-                  }
-                  .code-col {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: flex-start;
-                    justify-content: center;
-                    text-align: left;
-                  }
-                  .sku-code {
-                    font-size: 8px;
-                    font-weight: 700;
-                    letter-spacing: 0.5px;
-                    font-family: monospace;
-                  }
-                  .price-tag {
-                    font-size: 12px;
-                    font-weight: 900;
-                    margin-top: 2px;
-                  }
-                  .footer-hint {
-                    font-size: 6px;
-                    color: #555;
-                  }
-                </style>
-              </head>
-              <body>
-                <div class="label-sheet">
-                  ${Array.from({ length: copies })
-                    .map(
-                      () => `
-                    <div class="label">
-                      <div>
-                        <div class="shop-name">${product.category || 'RETAIL STORE'}</div>
-                        <div class="product-name">${product.name}</div>
-                      </div>
-                      <div class="middle-row">
-                        <img class="qr-img" src="${qrUrl}" alt="QR" />
-                        <div class="code-col">
-                          <div class="sku-code">${product.id}</div>
-                          <div class="price-tag">${symbol} ${Number(product.price).toLocaleString()}</div>
-                          <div class="footer-hint">SCAN AT POS COUNTER</div>
-                        </div>
-                      </div>
-                    </div>
-                  `
-                    )
-                    .join('')}
-                </div>
-                <script>
-                  window.onload = function() {
-                    window.print();
-                    setTimeout(function() { window.close(); }, 500);
-                  };
-                </script>
-              </body>
-            </html>
-          `;
-          printWindow.document.open();
-          printWindow.document.write(htmlContent);
-          printWindow.document.close();
-        }
+        const popup = window.open(url, '_blank');
+        if (!popup) throw new Error('Allow popups to open the printable PDF.');
       } else {
-        // Native platform: fallback to PDF Sheet or notify user
-        handlePrintA4Sheet();
+        file = await File.downloadFileAsync(url, new File(Paths.cache, `labels-${Date.now()}.pdf`), { headers: { Authorization: `Bearer ${await getAuthToken()}` } });
+        if (share) {
+          if (!await Sharing.isAvailableAsync()) throw new Error('PDF sharing is unavailable on this device.');
+          await Sharing.shareAsync(file.uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' });
+        } else {
+          await Print.printAsync({ uri: file.uri });
+        }
       }
     } catch (err: any) {
-      Alert.alert('Print Error', err.message || 'Could not trigger label printing.');
+      Alert.alert('Label PDF Error', err.message || 'Unable to open label PDF.');
     } finally {
+      // Android resolves printAsync when the dialog opens; retain its file for the print service.
+      busy.current = false;
       setPrinting(false);
     }
   };
-
-  const handlePrintA4Sheet = async () => {
-    try {
-      const url = await productApi.getQRLabelsUrl(product.id, Math.max(copies, 15));
-      if (Platform.OS === 'web') {
-        window.open(url, '_blank');
-      } else {
-        await WebBrowser.openBrowserAsync(url);
-      }
-    } catch (err: any) {
-      Alert.alert('Unable to Open PDF', err.message || 'Error generating QR labels PDF sheet.');
-    }
-  };
+  const handlePrintThermal = () => openPDF('thermal');
+  const handlePrintA4Sheet = () => openPDF('a4');
 
   return (
     <Modal
@@ -244,7 +131,7 @@ export function ThermalLabelModal({
                 <View style={styles.stickerBodyRow}>
                   <View style={styles.qrCodeWrapper}>
                     <Image
-                      source={{ uri: qrUrl }}
+                      source={qrUrl ? { uri: qrUrl } : undefined}
                       style={styles.qrImage}
                       resizeMode="contain"
                     />
@@ -327,6 +214,11 @@ export function ThermalLabelModal({
               ))}
             </View>
 
+            <Text style={{ color: theme.textSecondary, marginBottom: 12 }}>
+              System print / PDF only. Select 50 × 30 mm media and 100% scale in your printer service.
+              Direct Bluetooth / USB: not configured. Printer model and protocol are awaiting selection.
+            </Text>
+            {qrError ? <Text style={{ color: theme.danger }}>{qrError}</Text> : null}
             {/* Actions */}
             <View style={styles.actionsContainer}>
               <TouchableOpacity
@@ -341,19 +233,22 @@ export function ThermalLabelModal({
                   <>
                     <Ionicons name="print" size={18} color="#FFFFFF" />
                     <Text style={styles.primaryPrintBtnText}>
-                      Print Label ({copies} {copies === 1 ? 'Copy' : 'Copies'})
+                      Open Print Dialog ({copies} {copies === 1 ? 'Copy' : 'Copies'})
                     </Text>
                   </>
                 )}
               </TouchableOpacity>
 
+              <TouchableOpacity style={[styles.secondaryBtn, { borderColor: theme.surfaceBorder }]} disabled={printing}
+                onPress={() => openPDF('thermal', true)}>
+                <Text style={{ color: theme.primary }}>Share / Save 50 × 30 mm PDF</Text>
+              </TouchableOpacity>
               <View style={styles.secondaryActionsRow}>
                 {onReprint && (
                   <TouchableOpacity
                     style={[styles.secondaryBtn, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]}
                     onPress={() => {
-                      onReprint();
-                      handlePrintThermal();
+                      if (!printing) { onReprint(); handlePrintThermal(); }
                     }}
                   >
                     <Ionicons name="refresh" size={16} color={theme.text} />
@@ -364,6 +259,7 @@ export function ThermalLabelModal({
                 <TouchableOpacity
                   style={[styles.secondaryBtn, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder, flex: onReprint ? 1 : 2 }]}
                   onPress={handlePrintA4Sheet}
+                  disabled={printing}
                 >
                   <Ionicons name="document-text-outline" size={16} color={theme.primary} />
                   <Text style={[styles.secondaryBtnText, { color: theme.primary }]}>Sheet (A4 PDF)</Text>

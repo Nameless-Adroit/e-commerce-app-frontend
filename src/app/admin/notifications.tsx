@@ -74,16 +74,6 @@ export default function AdminNotificationsScreen() {
         }
       });
 
-      // System notification
-      list.push({
-        id: 'system-info-pos',
-        type: 'info',
-        title: 'POS Counter Active',
-        message: `${activeShop ? activeShop.name : 'Store'} counter register is online. Ready for barcode scanning and cash/card/mobile money checkout.`,
-        timestamp: 'System',
-        read: true,
-      });
-
       setNotifications(list);
     } catch (err) {
       console.error('Failed to load notifications:', err);
@@ -124,7 +114,7 @@ export default function AdminNotificationsScreen() {
         subtitle={
           unreadCount > 0
             ? `${unreadCount} alert${unreadCount === 1 ? '' : 's'} requiring attention`
-            : 'All systems normal'
+            : 'No unread stock alerts'
         }
         leftAction={
           <TouchableOpacity

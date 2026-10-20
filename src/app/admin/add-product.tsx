@@ -60,8 +60,7 @@ export default function AddProductScreen() {
       }
     } catch (err: any) {
       console.warn('ID generation fallback:', err.message);
-      const rand = Math.random().toString(36).substring(2, 7).toUpperCase();
-      setProductId(`PRD-LOC-${rand}`);
+      setProductId(''); // The backend will generate the definitive identity during creation.
     } finally {
       setGeneratingId(false);
     }
@@ -73,12 +72,16 @@ export default function AddProductScreen() {
       return;
     }
 
-    const numPrice = parseFloat(price);
+    if (submitting) return;
+    const numPrice = Number(price);
     if (isNaN(numPrice) || numPrice < 0) {
       Alert.alert('Invalid Price', 'Please enter a valid numeric selling price.');
       return;
     }
 
+    if (!Number.isSafeInteger(Number(initialStock)) || Number(initialStock) < 0 || !Number.isSafeInteger(Number(reorderLevel)) || Number(reorderLevel) < 0 || !Number.isFinite(Number(costPrice || 0)) || Number(costPrice || 0) < 0) {
+      Alert.alert('Invalid Values', 'Stock and threshold must be non-negative integers. Cost must be non-negative.'); return;
+    }
     setSubmitting(true);
     try {
       const res = await productApi.createProduct({
@@ -87,9 +90,9 @@ export default function AddProductScreen() {
         description: description.trim() || undefined,
         category: category.trim() || 'General',
         price: numPrice,
-        cost_price: parseFloat(costPrice) || 0,
-        initial_stock: parseInt(initialStock, 10) || 0,
-        reorder_level: parseInt(reorderLevel, 10) || 5
+        cost_price: Number(costPrice || 0),
+        initial_stock: Number(initialStock),
+        reorder_level: Number(reorderLevel)
       });
 
       const prod = res.data;

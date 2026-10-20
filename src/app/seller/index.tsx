@@ -108,7 +108,7 @@ export default function SellerCounterScreen() {
   return (
     <View style={styles.container}>
       <Header
-        title="JM Solution POS"
+        title="Counter"
         subtitle={activeShop ? `${activeShop.name} • Retail & POS Counter` : 'Retail and POS Counter'}
         leftAction={
           <TouchableOpacity

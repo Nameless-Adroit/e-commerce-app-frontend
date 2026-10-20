@@ -1,3 +1,4 @@
+import { randomUUID } from 'expo-crypto';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -15,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useStyles } from '../context/ThemeContext';
 import { AppTheme } from '../theme/colors';
 import { Product } from '../types';
-import { productApi } from '../services/api';
+import { posApi } from '../services/api';
 
 interface ReturnRestockModalProps {
   visible: boolean;
@@ -43,6 +44,8 @@ export function ReturnRestockModal({
   const { theme } = useTheme();
   const styles = useStyles(createStyles);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [originalSale, setOriginalSale] = useState('');
+  const [requestId, setRequestId] = useState(randomUUID);
   const [quantity, setQuantity] = useState<number>(1);
   const [reason, setReason] = useState<string>(COMMON_REASONS[0]);
   const [customReason, setCustomReason] = useState<string>('');
@@ -75,6 +78,8 @@ export function ReturnRestockModal({
   const handleDecrement = () => setQuantity((prev) => Math.max(1, prev - 1));
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+    if (!originalSale.trim()) { setErrorMsg('Original sale reference is required.'); return; }
     if (!selectedProductId) {
       setErrorMsg('Please select a product to restock.');
       return;
@@ -94,7 +99,9 @@ export function ReturnRestockModal({
     try {
       setIsSubmitting(true);
       setErrorMsg('');
-      await productApi.restock(selectedProductId, quantity, `[RETURN] ${finalReason}`, 'return');
+      await posApi.processReturn({ original_transaction_id: originalSale.trim(), request_id: requestId, reason: finalReason, items: [{ productId: selectedProductId, quantity }] });
+      setRequestId(randomUUID());
+      setOriginalSale('');
       Alert.alert(
         'Return Processed',
         `Successfully restocked ${quantity} unit(s) of ${selectedProduct?.name || selectedProductId} back to inventory.`
@@ -138,6 +145,8 @@ export function ReturnRestockModal({
               </View>
             ) : null}
 
+            <Text style={styles.sectionLabel}>ORIGINAL SALE REFERENCE (REQUIRED)</Text>
+            <TextInput value={originalSale} onChangeText={setOriginalSale} placeholder="TXN-..." style={{ color: theme.text, padding: 12 }} />
             {/* Product Info / Selection */}
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>TARGET PRODUCT</Text>

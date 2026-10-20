@@ -166,6 +166,7 @@ export interface Transaction {
 }
 
 export interface ReturnPayload {
+  request_id: string;
   shop_id?: number;
   items: Array<{
     productId: string;
@@ -173,7 +174,7 @@ export interface ReturnPayload {
     unitPrice?: number;
   }>;
   reason: string;
-  original_transaction_id?: string;
+  original_transaction_id: string;
   payment_method?: 'cash' | 'card' | 'mobile_money';
   is_defective?: boolean;
 }

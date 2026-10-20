@@ -7,6 +7,9 @@ node_modules/
 .expo/
 dist/
 web-build/
+dist-verification/
+tmp/
+lint-current.json
 expo-env.d.ts
 
 # Native

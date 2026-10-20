@@ -1,5 +1,11 @@
 # 🏪 JM Solution POS — Mobile & Web Application
 
+> Current update (20 October 2026): Seller opens Counter; Cart, Returns and History remain in the sidebar. Business Owner opens management; Platform Owner uses the web portal. Returns must load an original sale, then the backend validates purchased/previously returned units and historical amounts. See [implementation report](../ADMIN_SELLER_MODERNIZATION.md) for actual verification and remaining master-specification gaps.
+>
+> Labels use backend PDFs, Android system printing and PDF sharing. Direct Bluetooth/USB is intentionally unconfigured pending printer selection. See [printer setup](../PRINTER_SETUP.md) before purchase. The added Expo modules work in Expo Go, but existing standalone APKs must be rebuilt. Custom native printer modules need a development build; the EAS development profile exists but `expo-dev-client` is not installed.
+>
+> Checks: `npx tsc --noEmit`, `npm run lint`, `npx expo export --platform web`. Lint has existing failures; the report records the baseline. Expo SDK 57 requires Node 22.13.x or newer. Some feature descriptions below are historical: database notifications, image persistence and direct printer support are not complete. Never deploy published fixture credentials.
+
 A modern, high-speed, cross-platform **Point of Sale (POS), Inventory & Retail Management** client built with **React Native**, **Expo Router**, and **TypeScript**. Supports Android, iOS, and Modern Web browsers.
 
 ---
@@ -46,7 +52,7 @@ Follow these steps to run the application on your computer:
 
 ### Step 1: Prerequisites
 Make sure you have installed:
-- [Node.js](https://nodejs.org/) (version 18 or 20 LTS recommended).
+- [Node.js](https://nodejs.org/) (version 22.13.x or newer).
 - [Git](https://git-scm.com/).
 
 ---
@@ -93,18 +99,9 @@ Once the terminal menu appears:
 
 ---
 
-## 🔑 4. Chosen Seed Credentials for Testing
+## Development credentials
 
-Authentication strictly requires a **Phone Number** and a **6-Digit PIN** for all users:
-
-| Role | User / Full Name | Phone Number (Local) | Phone Number (E.164) | 6-Digit PIN | Assigned Store / Scope | Portal |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Super Admin** | Alexander Cross (`superadmin`) | `0700 000 001` | `+255700000001` | `123456` | Platform Overseer | `/super-admin` |
-| **Shop Admin 1** | Marcus Vance (`admin_tech`) | `0712 100 001` | `+255712100001` | `123456` | Kariakoo Tech Hub | `/admin` |
-| **Shop Admin 2** | Elena Rostova (`admin_metro`) | `0712 100 002` | `+255712100002` | `123456` | Mlimani Boutique | `/admin` |
-| **POS Seller 1** | Alice Morgan (`seller_alice`) | `0712 200 001` | `+255712200001` | `123456` | Kariakoo Tech Hub | `/seller` |
-| **POS Seller 2** | Bob Kendrick (`seller_bob`) | `0712 200 002` | `+255712200002` | `123456` | Kariakoo Tech Hub | `/seller` |
-| **POS Seller 3** | Charlie Dupont (`seller_charlie`) | `0712 200 003` | `+255712200003` | `123456` | Mlimani Boutique | `/seller` |
+Use isolated fixtures with private credentials. Do not deploy published fixture PINs.
 
 ---
 

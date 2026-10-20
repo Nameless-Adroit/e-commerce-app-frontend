@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { randomUUID } from 'expo-crypto';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,7 +18,7 @@ import { ScannerModal } from '../../components/ScannerModal';
 import { productApi, posApi } from '../../services/api';
 import { useTheme, useStyles } from '../../context/ThemeContext';
 import { AppTheme } from '../../theme/colors';
-import { Product } from '../../types';
+import { Product, Transaction } from '../../types';
 
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/currency';
@@ -32,9 +33,13 @@ const COMMON_REASONS = [
 
 export default function SellerReturnsScreen() {
   const router = useRouter();
+  const requestId = useRef(randomUUID());
+  const submittingRef = useRef(false);
   const { theme } = useTheme();
   const { currencySymbol } = useAuth();
   const styles = useStyles(createStyles);
+  const [originalSale, setOriginalSale] = useState<Transaction | null>(null);
+  const [findingSale, setFindingSale] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -95,13 +100,32 @@ export default function SellerReturnsScreen() {
     setSearchQuery(product.id);
   };
 
+  const findOriginalSale = async () => {
+    if (!originalTxnId.trim() || findingSale) return;
+    setFindingSale(true);
+    try {
+      const response = await posApi.getTransactionDetails(originalTxnId.trim());
+      if (!response.data || response.data.status !== 'completed' || response.data.original_transaction_id) throw new Error('Choose a completed original sale.');
+      setOriginalSale(response.data);
+      setSelectedProduct(null);
+    } catch (err: any) {
+      setOriginalSale(null);
+      Alert.alert('Sale Lookup', err.message || 'Sale could not be loaded.');
+    } finally { setFindingSale(false); }
+  };
+
   const handleSubmitReturn = async () => {
+    if (submittingRef.current) return;
+    if (!originalSale || originalSale.id.toUpperCase() !== originalTxnId.trim().toUpperCase()) {
+      Alert.alert('Sale Required', 'Enter the original sale reference from the customer receipt.');
+      return;
+    }
     if (!selectedProduct) {
       Alert.alert('Selection Required', 'Please select or scan a product to return.');
       return;
     }
 
-    if (quantity <= 0) {
+    if (!Number.isSafeInteger(quantity) || quantity <= 0) {
       Alert.alert('Invalid Quantity', 'Return quantity must be at least 1 unit.');
       return;
     }
@@ -112,15 +136,16 @@ export default function SellerReturnsScreen() {
       return;
     }
 
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const res = await posApi.processReturn({
-        original_transaction_id: originalTxnId.trim() || undefined,
+        original_transaction_id: originalTxnId.trim(),
+        request_id: requestId.current,
         items: [
           {
             productId: selectedProduct.id,
-            quantity,
-            unitPrice: Number(selectedProduct.price)
+            quantity
           }
         ],
         reason: finalReason,
@@ -133,20 +158,23 @@ export default function SellerReturnsScreen() {
       Alert.alert(
         'Return Processed',
         `Return Transaction ID: ${res.data?.transaction_id}\n` +
-        `Customer Refund: ${refundFormatted}\n` +
+        `Recorded Refund Amount: ${refundFormatted}\n` +
         `Inventory: ${quantity} unit(s) ${isDefective ? 'marked defective' : 'restocked to shelf'}.`,
         [{ text: 'OK' }]
       );
 
+      requestId.current = randomUUID();
       // Reset form & reload
       setSelectedProduct(null);
       setSearchQuery('');
       setOriginalTxnId('');
+      setOriginalSale(null);
       setQuantity(1);
       loadProducts();
     } catch (err: any) {
       Alert.alert('Processing Error', err.message || 'Failed to complete return.');
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -154,8 +182,8 @@ export default function SellerReturnsScreen() {
   return (
     <View style={styles.container}>
       <Header
-        title="Returns & Restock"
-        subtitle="Process customer returns and audit shelf inventory"
+        title="Customer Returns"
+        subtitle="Return items against an original sale"
         showBack={true}
         onBack={() => router.push('/seller' as any)}
       />
@@ -167,6 +195,26 @@ export default function SellerReturnsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
       >
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>1. Find the Original Sale</Text>
+          <TextInput style={styles.searchInput} placeholder="Sale reference from receipt (TXN-...)"
+            placeholderTextColor={theme.textMuted} value={originalTxnId}
+            onChangeText={value => { setOriginalTxnId(value); setOriginalSale(null); }} autoCapitalize="characters" />
+          <TouchableOpacity onPress={findOriginalSale} disabled={findingSale || !originalTxnId.trim()} style={styles.scanBtn}>
+            <Text style={styles.scanBtnText}>{findingSale ? 'Finding Sale...' : 'Load Original Sale'}</Text>
+          </TouchableOpacity>
+          {originalSale?.items?.map((line, index) => (
+            <TouchableOpacity key={`${line.product_id}-${index}`} style={{ paddingVertical: 10 }} onPress={() => {
+              setSelectedProduct({ id: line.product_id, name: line.product_name || line.name || line.product_id,
+                price: line.unit_price, stock_quantity: 0, shop_id: originalSale.shop_id, reorder_level: 0 } as Product);
+              setSearchQuery(line.product_id);
+            }}>
+              <Text style={{ color: theme.text }}>{line.product_name || line.name || line.product_id} · Purchased: {line.quantity}</Text>
+              <Text style={{ color: theme.textSecondary }}>Recorded unit price: {formatCurrency(line.unit_price, currencySymbol)} · Tap to select</Text>
+            </TouchableOpacity>
+          ))}
+          <Text style={{ color: theme.textSecondary, marginTop: 8 }}>The server checks previous returns and calculates the refund from the original payment, including discounts. Record any refund paid separately; no payment is transferred automatically.</Text>
+        </View>
         {/* Quick Scan Action Bar */}
         <View style={styles.scanBar}>
           <TouchableOpacity
@@ -181,7 +229,7 @@ export default function SellerReturnsScreen() {
 
         {/* Product Search & Selection Box */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>1. Locate Product</Text>
+          <Text style={styles.cardTitle}>2. Select Returned Product</Text>
           <View style={styles.searchRow}>
             <Ionicons name="search-outline" size={18} color={theme.textMuted} />
             <TextInput
@@ -338,32 +386,6 @@ export default function SellerReturnsScreen() {
           </View>
         </View>
 
-        {/* 4. Original Transaction Reference (Optional) & Refund Summary */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>4. Receipt Reference & Refund</Text>
-          <Text style={styles.fieldLabel}>Original Transaction / Invoice # (Optional):</Text>
-          <TextInput
-            style={[styles.searchInput, { borderWidth: 1, borderColor: theme.surfaceBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginTop: 4 }]}
-            placeholder="e.g. TXN-2026-XXXXXX"
-            placeholderTextColor={theme.textMuted}
-            value={originalTxnId}
-            onChangeText={setOriginalTxnId}
-            autoCapitalize="characters"
-          />
-
-          {selectedProduct && (
-            <View style={{ marginTop: 14, padding: 12, backgroundColor: 'rgba(16, 185, 129, 0.08)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)' }}>
-              <Text style={{ fontSize: 11, color: theme.textSecondary, fontWeight: '500' }}>Estimated Customer Refund Due:</Text>
-              <Text style={{ fontSize: 18, color: theme.accent, fontWeight: '800', marginTop: 2 }}>
-                {formatCurrency(Number(selectedProduct.price) * quantity, currencySymbol)}
-              </Text>
-              <Text style={{ fontSize: 10, color: theme.textMuted, marginTop: 2 }}>
-                Calculated at unit selling price: {formatCurrency(selectedProduct.price, currencySymbol)} Ã— {quantity}
-              </Text>
-            </View>
-          )}
-        </View>
-
         {/* Submit Button */}
         <TouchableOpacity
           style={[
@@ -371,7 +393,7 @@ export default function SellerReturnsScreen() {
             (!selectedProduct || submitting) && { opacity: 0.6 }
           ]}
           onPress={handleSubmitReturn}
-          disabled={!selectedProduct || submitting}
+          disabled={!selectedProduct || !originalSale || submitting}
           activeOpacity={0.85}
         >
           {submitting ? (

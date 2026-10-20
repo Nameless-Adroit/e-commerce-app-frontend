@@ -18,6 +18,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
 
   const addItem = (product: Product, quantity = 1) => {
+    if (product.stock_quantity <= 0 || !Number.isSafeInteger(quantity) || quantity <= 0) return;
     setItems((prevItems) => {
       const existingIndex = prevItems.findIndex((item) => item.product.id === product.id);
       if (existingIndex > -1) {

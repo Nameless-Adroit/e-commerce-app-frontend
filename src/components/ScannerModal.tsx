@@ -25,6 +25,7 @@ interface ScannerModalProps {
 export function ScannerModal({ visible, onClose, onScan, sampleIds = [] }: ScannerModalProps) {
   const { theme } = useTheme();
   const styles = useStyles(createStyles);
+  const scanGate = useRef(false);
   const [manualId, setManualId] = useState('');
   const [torchOn, setTorchOn] = useState(false);
   const [scanned, setScanned] = useState(false);
@@ -35,6 +36,7 @@ export function ScannerModal({ visible, onClose, onScan, sampleIds = [] }: Scann
 
   useEffect(() => {
     if (visible) {
+      scanGate.current = false;
       setScanned(false);
       setTorchOn(false);
 
@@ -59,7 +61,8 @@ export function ScannerModal({ visible, onClose, onScan, sampleIds = [] }: Scann
   }, [visible]);
 
   const handleBarcodeScanned = (result: BarcodeScanningResult) => {
-    if (scanned) return;
+    if (scanGate.current) return;
+    scanGate.current = true;
     setScanned(true);
 
     const scannedText = (result.data || '').trim().toUpperCase();
@@ -69,6 +72,7 @@ export function ScannerModal({ visible, onClose, onScan, sampleIds = [] }: Scann
         onClose();
       }, 300);
     } else {
+      scanGate.current = false;
       setScanned(false);
     }
   };

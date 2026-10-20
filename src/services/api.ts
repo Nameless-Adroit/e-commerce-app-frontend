@@ -475,10 +475,10 @@ export const productApi = {
     });
   },
 
-  async restock(id: string, quantity: number, reason?: string, changeType: 'restock' | 'return' = 'restock'): Promise<ApiResponse<any>> {
+  async restock(id: string, quantity: number, reason?: string): Promise<ApiResponse<any>> {
     return request<ApiResponse<any>>(`/products/${encodeURIComponent(id)}/restock`, {
       method: 'POST',
-      body: JSON.stringify({ quantity, reason, change_type: changeType })
+      body: JSON.stringify({ quantity, reason, change_type: 'restock' })
     });
   },
 
@@ -495,11 +495,17 @@ export const productApi = {
     });
   },
 
-  async getQRLabelsUrl(id: string, count: number = 15): Promise<string> {
+  async getQRCode(id: string): Promise<ApiResponse<{ product_id: string; data_uri: string }>> {
+    return request(`/products/${encodeURIComponent(id)}/qr-code`);
+  },
+
+  async getQRLabelsUrl(id: string, count: number = 15, format: 'thermal' | 'a4' = 'a4', includeToken = true): Promise<string> {
     const baseUrl = getApiBaseUrl();
     const token = await getAuthToken();
-    const tokenParam = token ? `&token=${encodeURIComponent(token)}` : '';
-    return `${baseUrl}/products/${encodeURIComponent(id)}/qr-labels?count=${count}${tokenParam}`;
+    const shopId = await getActiveShopId();
+    const shopParam = shopId ? `&shop_id=${shopId}` : '';
+    const tokenParam = includeToken && token ? `&token=${encodeURIComponent(token)}` : '';
+    return `${baseUrl}/products/${encodeURIComponent(id)}/qr-labels?count=${count}&format=${format}${shopParam}${tokenParam}`;
   }
 };
 
@@ -711,6 +717,11 @@ export const businessApi = {
     business: Business;
     summary: {
       shops_count: number;
+      products_in_stock: number;
+      low_stock_products: number;
+      out_of_stock_products: number;
+      active_sellers: number;
+      total_transactions: number;
       staff_count: number;
       products_count: number;
       total_units_in_stock: number;

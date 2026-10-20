@@ -16,11 +16,11 @@ import { RestockModal } from '../../components/RestockModal';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { AdminSidebar } from '../../components/AdminSidebar';
 import { SubscriptionBanner } from '../../components/SubscriptionBanner';
-import { analyticsApi, productApi, posApi, authApi, businessApi } from '../../services/api';
+import { productApi, posApi, businessApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, useStyles } from '../../context/ThemeContext';
 import { AppTheme } from '../../theme/colors';
-import { DailyReport, Product, Transaction, User } from '../../types';
+import { Product, Transaction } from '../../types';
 import { formatCurrency } from '../../utils/currency';
 
 export default function AdminDashboard() {
@@ -34,11 +34,10 @@ export default function AdminDashboard() {
   const [sidebarVisible, setSidebarVisible] = useState(false);
 
   // Business Data
-  const [dailyReport, setDailyReport] = useState<DailyReport | null>(null);
+  const [metrics, setMetrics] = useState<{ products_count: number; products_in_stock: number; low_stock_products: number; out_of_stock_products: number; total_revenue: number; today_revenue: number; total_transactions: number; active_sellers: number } | null>(null);
+  const [loadError, setLoadError] = useState('');
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
-  const [sellersCount, setSellersCount] = useState<number>(0);
-  const [totalCumulativeSales, setTotalCumulativeSales] = useState<number>(0);
 
   // Modals
   const [selectedRestockProduct, setSelectedRestockProduct] = useState<Product | null>(null);
@@ -48,17 +47,12 @@ export default function AdminDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const [reportRes, productsRes, txnsRes, sellersRes, overviewRes] = await Promise.all([
-        analyticsApi.getDailyReport(),
+      setLoadError('');
+      const [productsRes, txnsRes, overviewRes] = await Promise.all([
         productApi.listProducts({ limit: 200 }),
         posApi.getTransactions({ limit: 6 }),
-        authApi.listUsers({ role: 'seller' }),
-        businessApi.getBusinessOverview().catch(() => ({ data: null }))
+        businessApi.getBusinessOverview()
       ]);
-
-      if (reportRes.data && !('global_summary' in reportRes.data)) {
-        setDailyReport(reportRes.data as DailyReport);
-      }
 
       if (productsRes.data?.products) {
         setAllProducts(productsRes.data.products);
@@ -68,14 +62,9 @@ export default function AdminDashboard() {
         setRecentTransactions(txnsRes.data.transactions);
       }
 
-      if (sellersRes.data?.users) {
-        setSellersCount(sellersRes.data.users.length);
-      }
-
-      if (overviewRes.data?.summary?.total_revenue) {
-        setTotalCumulativeSales(overviewRes.data.summary.total_revenue);
-      }
-    } catch (err) {
+      if (overviewRes.data?.summary) setMetrics(overviewRes.data.summary);
+    } catch (err: any) {
+      setLoadError(err.message || 'Dashboard could not be loaded. Pull down to retry.');
       console.error('Error loading admin dashboard:', err);
     } finally {
       setLoading(false);
@@ -96,35 +85,17 @@ export default function AdminDashboard() {
 
   // Compute 8 Core Business Summary Cards
   const summaryCards = useMemo(() => {
-    let inStock = 0;
-    let lowStock = 0;
-    let outOfStock = 0;
-
-    allProducts.forEach((p) => {
-      if (p.stock_quantity <= 0) {
-        outOfStock++;
-      } else if (p.stock_quantity <= p.reorder_level) {
-        lowStock++;
-      } else {
-        inStock++;
-      }
-    });
-
-    const todaySales = dailyReport?.revenue_generated || (dailyReport as any)?.total_sales || 0;
-    const todayOrders = dailyReport?.total_transactions || 0;
-    const totalSales = Math.max(totalCumulativeSales, todaySales);
-
     return {
-      totalProducts: allProducts.length,
-      productsInStock: inStock,
-      lowStockProducts: lowStock,
-      outOfStockProducts: outOfStock,
-      totalSales,
-      todaySales,
-      todayOrders,
-      totalSellers: sellersCount
+      totalProducts: metrics?.products_count ?? 0,
+      productsInStock: metrics?.products_in_stock ?? 0,
+      lowStockProducts: metrics?.low_stock_products ?? 0,
+      outOfStockProducts: metrics?.out_of_stock_products ?? 0,
+      totalSales: metrics?.total_revenue ?? 0,
+      todaySales: metrics?.today_revenue ?? 0,
+      todayOrders: metrics?.total_transactions ?? 0,
+      totalSellers: metrics?.active_sellers ?? 0
     };
-  }, [allProducts, dailyReport, sellersCount, totalCumulativeSales]);
+  }, [metrics]);
 
   // Low stock products alert items
   const lowStockAlertItems = useMemo(() => {
@@ -139,7 +110,7 @@ export default function AdminDashboard() {
     <View style={styles.container}>
       <Header
         title={user?.business_name || 'JM Solution POS'}
-        subtitle={activeShop ? `${activeShop.name} (${activeShop.shop_code}) • Dashboard` : 'Shop Overview'}
+        subtitle={activeShop ? `${activeShop.name} (${activeShop.shop_code}) • Dashboard` : 'Business Overview � All shops'}
         leftAction={
           <TouchableOpacity
             onPress={() => setSidebarVisible(true)}
@@ -168,6 +139,7 @@ export default function AdminDashboard() {
         }
       />
 
+      {loadError ? <Text style={{ color: theme.danger, padding: 12 }}>{loadError}</Text> : null}
       {/* Subscription Status Notice */}
       <SubscriptionBanner compact />
 
@@ -316,7 +288,7 @@ export default function AdminDashboard() {
                 <View style={[styles.cardIconBox, { backgroundColor: 'rgba(56, 189, 248, 0.12)' }]}>
                   <Ionicons name="receipt-outline" size={18} color="#0284C7" />
                 </View>
-                <Text style={[styles.cardLabel, { color: theme.textMuted }]}>Today's Orders</Text>
+                <Text style={[styles.cardLabel, { color: theme.textMuted }]}>Total Transactions</Text>
                 <Text style={[styles.cardValue, { color: theme.text }]}>{summaryCards.todayOrders}</Text>
               </TouchableOpacity>
 
