@@ -32,9 +32,27 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Overview',
+          title: 'Dashboard',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'grid' : 'grid-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="products"
+        options={{
+          title: 'Products',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'pricetags' : 'pricetags-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="inventory"
+        options={{
+          title: 'Inventory',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'layers' : 'layers-outline'} size={size} color={color} />
           ),
         }}
       />
@@ -48,34 +66,34 @@ export default function AdminLayout() {
         }}
       />
       <Tabs.Screen
-        name="products"
-        options={{
-          title: 'Inventory',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'pricetags' : 'pricetags-outline'} size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="sellers"
         options={{
-          title: 'Staff',
+          title: 'Sellers',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="billing"
+        name="reports"
         options={{
-          title: 'Billing',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'card' : 'card-outline'} size={size} color={color} />
-          ),
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null,
         }}
       />
       <Tabs.Screen
         name="add-product"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="billing"
         options={{
           href: null,
         }}

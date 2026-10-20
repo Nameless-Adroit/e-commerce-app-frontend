@@ -138,6 +138,8 @@ export default function SellerCartScreen() {
       <Header
         title="Transaction Cart"
         subtitle={`${totalUnits} unit${totalUnits === 1 ? '' : 's'} staged for checkout`}
+        showBack={true}
+        onBack={() => router.push('/seller' as any)}
         rightAction={
           items.length > 0 ? (
             <TouchableOpacity onPress={handleClearCartPrompt} style={styles.clearHeaderBtn}>

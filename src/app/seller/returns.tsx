@@ -11,6 +11,7 @@ import {
   RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Header } from '../../components/Header';
 import { ScannerModal } from '../../components/ScannerModal';
 import { productApi, posApi } from '../../services/api';
@@ -30,6 +31,7 @@ const COMMON_REASONS = [
 ];
 
 export default function SellerReturnsScreen() {
+  const router = useRouter();
   const { theme } = useTheme();
   const { currencySymbol } = useAuth();
   const styles = useStyles(createStyles);
@@ -154,6 +156,8 @@ export default function SellerReturnsScreen() {
       <Header
         title="Returns & Restock"
         subtitle="Process customer returns and audit shelf inventory"
+        showBack={true}
+        onBack={() => router.push('/seller' as any)}
       />
 
       <ScrollView

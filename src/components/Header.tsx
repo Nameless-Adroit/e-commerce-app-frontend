@@ -15,10 +15,12 @@ interface HeaderProps {
   subtitle?: string;
   showBack?: boolean;
   onBack?: () => void;
+  leftAction?: React.ReactNode;
   rightAction?: React.ReactNode;
+  hideDefaultActions?: boolean;
 }
 
-export function Header({ title = 'JM Solution POS', subtitle, showBack, onBack, rightAction }: HeaderProps) {
+export function Header({ title = 'JM Solution POS', subtitle, showBack, onBack, leftAction, rightAction, hideDefaultActions }: HeaderProps) {
   const { user, logout, activeShop, availableShops } = useAuth();
   const { theme } = useTheme();
   const router = useRouter();
@@ -82,7 +84,9 @@ export function Header({ title = 'JM Solution POS', subtitle, showBack, onBack, 
       >
         <View style={styles.container}>
           <View style={styles.leftCol}>
-            {showBack ? (
+            {leftAction ? (
+              leftAction
+            ) : showBack ? (
               <TouchableOpacity 
                 onPress={() => onBack ? onBack() : router.back()} 
                 style={[styles.backBtn, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]} 

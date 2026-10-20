@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Header } from '../../components/Header';
+import { AdminSidebar } from '../../components/AdminSidebar';
 import { authApi, shopApi, subscriptionApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, useStyles } from '../../context/ThemeContext';
@@ -30,6 +31,7 @@ export default function AdminSellersScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
   const [sellers, setSellers] = useState<User[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
   const [quotaDetails, setQuotaDetails] = useState<{
@@ -248,8 +250,15 @@ export default function AdminSellersScreen() {
       <Header
         title="Cashiers & Sellers"
         subtitle="Provision and manage store checkout accounts"
-        showBack={true}
-        onBack={() => router.back()}
+        leftAction={
+          <TouchableOpacity
+            onPress={() => setSidebarVisible(true)}
+            style={[styles.menuIconBtn, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu-outline" size={22} color={theme.text} />
+          </TouchableOpacity>
+        }
       />
 
       {loading ? (
@@ -635,6 +644,12 @@ export default function AdminSellersScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Admin Slide-out Sidebar */}
+      <AdminSidebar
+        visible={sidebarVisible}
+        onClose={() => setSidebarVisible(false)}
+      />
     </View>
   );
 }
@@ -643,6 +658,15 @@ const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
     container: {
       flex: 1
+    },
+    menuIconBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 10,
     },
     loadingContainer: {
       flex: 1,

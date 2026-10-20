@@ -218,7 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       throw new Error('INVALID CREDENTIALS');
     } catch (err: any) {
-      console.error('[MOBILE_AUTH_LOG]', {
+      console.log('[MOBILE_AUTH_LOG]', {
         message: err.message,
         status: err.status,
         code: err.code,

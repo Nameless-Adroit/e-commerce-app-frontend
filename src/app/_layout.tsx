@@ -1,15 +1,19 @@
 import React from 'react';
+import { LogBox } from 'react-native';
 import { Stack, useRouter, ErrorBoundaryProps } from 'expo-router';
 import { AuthProvider } from '../context/AuthContext';
 import { CartProvider } from '../context/CartContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { ErrorView } from '../components/ErrorView';
 
+// Suppress LogBox error popups and toasts in the UI - all errors are logged cleanly to terminal
+LogBox.ignoreAllLogs(true);
+
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   const router = useRouter();
 
   React.useEffect(() => {
-    console.error('[Root ErrorBoundary caught]:', error);
+    console.log('[Root ErrorBoundary caught]:', error);
   }, [error]);
 
   return (

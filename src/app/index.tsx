@@ -106,7 +106,7 @@ export default function LoginScreen() {
     try {
       await login(cleanPhone, cleanPin);
     } catch (err: any) {
-      console.error('[MOBILE_AUTH_LOG]', {
+      console.log('[MOBILE_AUTH_LOG]', {
         message: err.message,
         status: err.status,
         code: err.code

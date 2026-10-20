@@ -71,9 +71,9 @@ export function ErrorView({
   // Log technical error details to console instead of exposing on UI
   React.useEffect(() => {
     if (error) {
-      console.error('[Application Error Caught]:', error);
+      console.log('[Application Error Caught]:', error);
       if (stackTrace) {
-        console.error('[Error Stack Trace]:', stackTrace);
+        console.log('[Error Stack Trace]:', stackTrace);
       }
     }
   }, [error, stackTrace]);

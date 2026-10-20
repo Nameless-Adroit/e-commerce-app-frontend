@@ -16,6 +16,7 @@ import { Header } from '../../components/Header';
 import { ScannerModal } from '../../components/ScannerModal';
 import { ProductDetailModal } from '../../components/ProductDetailModal';
 import { SubscriptionBanner } from '../../components/SubscriptionBanner';
+import { SellerSidebar } from '../../components/SellerSidebar';
 import { useCart } from '../../context/CartContext';
 import { posApi, productApi, analyticsApi } from '../../services/api';
 import { useTheme, useStyles } from '../../context/ThemeContext';
@@ -31,6 +32,7 @@ export default function SellerCounterScreen() {
   const styles = useStyles(createStyles);
   const { addItem, items, totalUnits, totalAmount } = useCart();
 
+  const [sidebarVisible, setSidebarVisible] = useState(false);
   const [scannerVisible, setScannerVisible] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
@@ -108,6 +110,16 @@ export default function SellerCounterScreen() {
       <Header
         title="JM Solution POS"
         subtitle={activeShop ? `${activeShop.name} • Retail & POS Counter` : 'Retail and POS Counter'}
+        leftAction={
+          <TouchableOpacity
+            onPress={() => setSidebarVisible(true)}
+            style={[styles.menuIconBtn, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]}
+            activeOpacity={0.7}
+            accessibilityLabel="Open Navigation Menu"
+          >
+            <Ionicons name="menu-outline" size={22} color={theme.text} />
+          </TouchableOpacity>
+        }
         rightAction={
           <TouchableOpacity onPress={() => router.push('/seller/cart' as any)} style={styles.cartIconBtn}>
             <Ionicons name="cart-outline" size={20} color={theme.text} />
@@ -304,11 +316,15 @@ export default function SellerCounterScreen() {
                     <Text style={styles.cardCategoryText} numberOfLines={1}>
                       {p.category || 'ITEM'}
                     </Text>
-                    {inCartCount > 0 && (
+                    {isOutOfStock ? (
+                      <View style={styles.outOfStockTag}>
+                        <Text style={styles.outOfStockTagText}>OUT OF STOCK</Text>
+                      </View>
+                    ) : inCartCount > 0 ? (
                       <View style={styles.inCartBadge}>
                         <Text style={styles.inCartBadgeText}>{inCartCount} in cart</Text>
                       </View>
-                    )}
+                    ) : null}
                   </View>
 
                   <Text style={styles.productName} numberOfLines={2}>
@@ -324,17 +340,20 @@ export default function SellerCounterScreen() {
                       <Text
                         style={[
                           styles.productStock,
-                          p.stock_quantity <= p.reorder_level
+                          isOutOfStock || p.stock_quantity <= p.reorder_level
                             ? { color: theme.danger }
                             : { color: theme.secondary }
                         ]}
                       >
-                        {isOutOfStock ? '0 units' : `${p.stock_quantity} left`}
+                        {isOutOfStock ? '0 units • Out of stock' : `${p.stock_quantity} left`}
                       </Text>
                     </View>
 
                     <TouchableOpacity
-                      style={[styles.quickCardAddBtn, isOutOfStock && { opacity: 0.4 }]}
+                      style={[
+                        styles.quickCardAddBtn,
+                        isOutOfStock && { backgroundColor: theme.textMuted, opacity: 0.5 }
+                      ]}
                       onPress={(e) => {
                         e.stopPropagation?.();
                         handleProductScanned(p.id);
@@ -343,7 +362,7 @@ export default function SellerCounterScreen() {
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="add" size={16} color="#ffffff" />
+                      <Ionicons name={isOutOfStock ? "ban" : "add"} size={16} color="#ffffff" />
                     </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
@@ -395,6 +414,12 @@ export default function SellerCounterScreen() {
         onAddToCart={(product, qty) => addItem(product, qty)}
         inCartQuantity={items.find((i) => i.product.id === selectedDetailProduct?.id)?.quantity || 0}
       />
+
+      {/* Seller Left Slide-out Sidebar */}
+      <SellerSidebar
+        visible={sidebarVisible}
+        onClose={() => setSidebarVisible(false)}
+      />
     </View>
   );
 }
@@ -410,6 +435,15 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 90
+  },
+  menuIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
   cartIconBtn: {
     padding: 8,
@@ -659,6 +693,20 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: theme.isDark ? '#A5B4FC' : theme.primary
+  },
+  outOfStockTag: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  outOfStockTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: theme.danger,
+    letterSpacing: 0.4,
   },
   productName: {
     fontSize: 13,

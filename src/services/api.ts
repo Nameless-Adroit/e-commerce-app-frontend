@@ -489,6 +489,12 @@ export const productApi = {
     });
   },
 
+  async deleteProduct(id: string): Promise<ApiResponse<{ message: string; action: 'deleted' | 'archived' }>> {
+    return request<ApiResponse<{ message: string; action: 'deleted' | 'archived' }>>(`/products/${encodeURIComponent(id)}`, {
+      method: 'DELETE'
+    });
+  },
+
   async getQRLabelsUrl(id: string, count: number = 15): Promise<string> {
     const baseUrl = getApiBaseUrl();
     const token = await getAuthToken();

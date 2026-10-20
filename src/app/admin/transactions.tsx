@@ -5,6 +5,7 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
   RefreshControl,
   Modal,
@@ -15,11 +16,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { Header } from '../../components/Header';
 import { ReceiptModal } from '../../components/ReceiptModal';
-import { posApi } from '../../services/api';
+import { AdminSidebar } from '../../components/AdminSidebar';
+import { posApi, authApi } from '../../services/api';
 import { useTheme, useStyles } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { AppTheme } from '../../theme/colors';
-import { Transaction, TransactionSummary } from '../../types';
+import { Transaction, TransactionSummary, User } from '../../types';
 import { formatCurrency } from '../../utils/currency';
 
 function formatDateToISO(d: Date): string {
@@ -59,7 +61,13 @@ export default function AdminTransactions() {
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  
+  // Filters and search
+  const [searchQuery, setSearchQuery] = useState('');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'cash' | 'card' | 'mobile_money'>('all');
+  const [sellerFilter, setSellerFilter] = useState<string>('all');
+  const [sellers, setSellers] = useState<User[]>([]);
   
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
   const [receiptVisible, setReceiptVisible] = useState(false);
@@ -89,6 +97,15 @@ export default function AdminTransactions() {
       setRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    if (!user || isLoading || user.role !== 'admin') return;
+    authApi.listUsers({ role: 'seller' }).then(res => {
+      if (res.data?.users) {
+        setSellers(res.data.users);
+      }
+    }).catch(err => console.error('Error fetching sellers for filter:', err));
+  }, [user, isLoading]);
 
   useEffect(() => {
     if (params.date && params.date !== selectedDate) {
@@ -145,11 +162,30 @@ export default function AdminTransactions() {
     }
   };
 
-  // Filter transactions by payment method
+  // Filter transactions by payment method, seller, and search query
   const filteredTransactions = useMemo(() => {
-    if (paymentFilter === 'all') return transactions;
-    return transactions.filter(t => t.payment_method === paymentFilter);
-  }, [transactions, paymentFilter]);
+    return transactions.filter(t => {
+      if (paymentFilter !== 'all' && t.payment_method !== paymentFilter) {
+        return false;
+      }
+      if (sellerFilter !== 'all') {
+        const matchesSellerId = String(t.seller_id) === String(sellerFilter);
+        const matchesSellerName = t.seller_name && t.seller_name.toLowerCase() === sellerFilter.toLowerCase();
+        if (!matchesSellerId && !matchesSellerName) {
+          return false;
+        }
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        const matchesId = t.id.toLowerCase().includes(q);
+        const matchesSeller = t.seller_name && t.seller_name.toLowerCase().includes(q);
+        if (!matchesId && !matchesSeller) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [transactions, paymentFilter, sellerFilter, searchQuery]);
 
   const isToday = selectedDate === todayStr;
 
@@ -166,6 +202,15 @@ export default function AdminTransactions() {
       <Header 
         title="Sales Journal" 
         subtitle="Audit & digital receipts" 
+        leftAction={
+          <TouchableOpacity
+            onPress={() => setSidebarVisible(true)}
+            style={[styles.menuIconBtn, { backgroundColor: theme.surfaceLight, borderColor: theme.surfaceBorder }]}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="menu-outline" size={22} color={theme.text} />
+          </TouchableOpacity>
+        }
       />
 
       {/* Date Navigation Bar */}
@@ -270,6 +315,55 @@ export default function AdminTransactions() {
           </View>
         </View>
       </View>
+
+      {/* Search Input for Transactions */}
+      <View style={[styles.searchBox, { backgroundColor: theme.surface, borderColor: theme.surfaceBorder }]}>
+        <Ionicons name="search-outline" size={18} color={theme.textMuted} />
+        <TextInput
+          style={[styles.searchInput, { color: theme.text }]}
+          placeholder="Search by transaction ID or cashier name..."
+          placeholderTextColor={theme.textMuted}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={18} color={theme.textMuted} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Seller Filter Chips */}
+      {sellers.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sellerFilterScroll}
+        >
+          <TouchableOpacity
+            style={[styles.sellerFilterChip, sellerFilter === 'all' && styles.sellerFilterChipActive]}
+            onPress={() => setSellerFilter('all')}
+          >
+            <Text style={[styles.sellerFilterText, sellerFilter === 'all' && styles.sellerFilterTextActive]}>
+              All Cashiers
+            </Text>
+          </TouchableOpacity>
+          {sellers.map((s) => {
+            const isSelected = sellerFilter === String(s.id) || sellerFilter === s.full_name;
+            return (
+              <TouchableOpacity
+                key={s.id}
+                style={[styles.sellerFilterChip, isSelected && styles.sellerFilterChipActive]}
+                onPress={() => setSellerFilter(isSelected ? 'all' : String(s.id))}
+              >
+                <Text style={[styles.sellerFilterText, isSelected && styles.sellerFilterTextActive]}>
+                  {s.full_name || s.username}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
 
       {/* Payment Filter Chips */}
       <View style={styles.filterRow}>
@@ -495,6 +589,12 @@ export default function AdminTransactions() {
           setSelectedTxn(null);
         }}
       />
+
+      {/* Admin Slide-out Sidebar */}
+      <AdminSidebar
+        visible={sidebarVisible}
+        onClose={() => setSidebarVisible(false)}
+      />
     </View>
   );
 }
@@ -503,6 +603,60 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background
+  },
+  menuIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 6,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    padding: 0,
+  },
+  sellerFilterScroll: {
+    paddingHorizontal: 16,
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  sellerFilterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.surfaceBorder,
+    marginRight: 6,
+  },
+  sellerFilterChipActive: {
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
+  },
+  sellerFilterText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: theme.textSecondary,
+  },
+  sellerFilterTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   center: {
     flex: 1,

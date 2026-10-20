@@ -9,6 +9,7 @@ import {
   RefreshControl 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Header } from '../../components/Header';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { CloseBusinessModal } from '../../components/CloseBusinessModal';
@@ -19,6 +20,7 @@ import { Transaction } from '../../types';
 import { formatCurrency } from '../../utils/currency';
 
 export default function SellerHistory() {
+  const router = useRouter();
   const { theme } = useTheme();
   const styles = useStyles(createStyles);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -65,6 +67,8 @@ export default function SellerHistory() {
       <Header
         title="Transaction Journal"
         subtitle="Completed Counter Sales"
+        showBack={true}
+        onBack={() => router.push('/seller' as any)}
         rightAction={
           <TouchableOpacity
             style={styles.closeDayHeaderBtn}
